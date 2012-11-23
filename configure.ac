@@ -47,6 +47,18 @@ AC_CHECK_FUNC([strlcpy], [],
     [AC_CHECK_LIB([bsd], [strlcpy], [],
         [AC_REPLACE_FUNCS([strlcpy])])])
 
+# UNIX98 PTYs.
+AC_MSG_CHECKING(whether system supports dynamic PTYs)
+if test -d /dev/pts && ls -d /dev/ptmx >/dev/null 2>&1 ; then
+    AC_MSG_RESULT([yes])
+    AC_DEFINE([HAVE_DEV_PTMX], [1], [Define to 1 if dynamic PTYs are supported.])
+else
+    AC_MSG_RESULT([no])
+    AC_MSG_ERROR([UNIX98 PTYs are required])
+fi
+AC_CHECK_FUNCS([grantpt])
+AC_CHECK_FUNCS([posix_openpt])
+
 AX_CHECK_CFLAGS([-std=c99])
 AX_CHECK_CFLAGS([-Wall -Werror])
 AX_CHECK_CFLAGS([-pedantic])
