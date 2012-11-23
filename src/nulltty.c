@@ -4,18 +4,21 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-/**
- * Obtains a new pseudoterminal master file descriptor
- *
- * @return Master's file descriptor, or -1 on error
- */
-int get_pty()
-{
-}
+#include "ptys.h"
 
 int main(int argc, char* argv[])
 {
-    printf("Hello, world...\n");
+    nulltty_t *nulltty;
+
+    nulltty = openptys("/home/mshroyer/Desktop/foo", "/home/mshroyer/Desktop/bar");
+    if ( nulltty == NULL ) {
+        perror("Error opening requested PTYs");
+        return 1;
+    }
+
+    getchar();
+
+    closeptys(nulltty);
 
     return 0;
 }

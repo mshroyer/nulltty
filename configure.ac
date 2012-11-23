@@ -23,7 +23,7 @@ CFLAGS="$CFLAGS"
 
 AM_INIT_AUTOMAKE([foreign -Wall -Werror])
 
-AC_PROG_CC
+AC_PROG_CC_C99
 AM_PROG_CC_C_O
 
 AC_CONFIG_HEADERS([config.h])
@@ -59,7 +59,6 @@ fi
 AC_CHECK_FUNCS([grantpt])
 AC_CHECK_FUNCS([posix_openpt])
 
-AX_CHECK_CFLAGS([-std=c99])
 AX_CHECK_CFLAGS([-Wall -Werror])
 AX_CHECK_CFLAGS([-pedantic])
 
