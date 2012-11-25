@@ -12,9 +12,6 @@
 #include "ptys.h"
 
 
-/** Should the application main loop terminate due to user request? */
-volatile sig_atomic_t shutdown = 0;
-
 static void print_usage(int retval)
 {
     const char *usage_info =
@@ -57,6 +54,7 @@ int main(int argc, char* argv[])
     bool daemonize = false, verbose = false;
     char *pid_file = NULL;
     const char *link_a, *link_b;
+    sig_atomic_t exit_flag = 0;
 
     while ( ( c = getopt_long(argc, argv, options,
                               long_options, &longindex) ) != -1 ) {
@@ -93,7 +91,7 @@ int main(int argc, char* argv[])
         return 1;
     }
 
-    if ( nulltty_proxy(nulltty) < 0 ) {
+    if ( nulltty_proxy(nulltty, &exit_flag) < 0 ) {
         perror("Proxying failed");
         nulltty_close(nulltty);
         return 2;

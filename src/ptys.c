@@ -14,8 +14,6 @@
 
 #define MAX(a, b) ((a)>(b)) ? (a) : (b)
 
-extern volatile sig_atomic_t shutdown;
-
 static int platform_openpt()
 {
     int fd;
@@ -134,14 +132,6 @@ static int closepty(nulltty_pty_t *pty)
     return result;
 }
 
-/**
- * Opens both PTYs required by nulltty
- *
- * @param link_a Path for first PTY slave's symlink
- * @param link_b Path for second PTY slave's symlink
- * @return Pointer to newly allocated descriptor struct, or NULL with errno
- * on error
- */
 nulltty_t *nulltty_open(const char *link_a, const char *link_b)
 {
     nulltty_t *nulltty = NULL;
@@ -166,12 +156,6 @@ nulltty_t *nulltty_open(const char *link_a, const char *link_b)
     return NULL;
 }
 
-/**
- * Closes both PTYs required by nulltty
- *
- * @param nulltty Nulltty resource descriptor
- * @return 0 on success, -1 with errno on error
- */
 int nulltty_close(nulltty_t *nulltty)
 {
     int result = 0;
@@ -251,18 +235,12 @@ static int proxy_shuffle_data(nulltty_pty_t *pty_dst, nulltty_pty_t *pty_src,
     return 0;
 }
 
-/**
- * Run full-duplex proxy between the nulltty PTYs
- *
- * @param nulltty Pointer to nulltty descriptor structure
- * @return 0 on success (exit via user request), -1 with errno on error
- */
-int nulltty_proxy(nulltty_t *nulltty)
+int nulltty_proxy(nulltty_t *nulltty, sig_atomic_t *exit_flag)
 {
     int nfds = MAX(nulltty->a.fd, nulltty->b.fd) + 1;
     fd_set rfds, wfds;
 
-    while ( shutdown == 0 ) {
+    while ( *exit_flag == 0 ) {
         FD_ZERO(&rfds);
         FD_ZERO(&wfds);
 

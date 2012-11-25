@@ -54,8 +54,9 @@ int nulltty_close(nulltty_t *nulltty);
  * two pseudoterminal devices.
  *
  * @param nulltty Pointer to structure returned by openptys()
+ * @param exit_flag Flag to signal program termination
  * @return 0 on success (user request termination), -1 on error
  */
-int nulltty_proxy(nulltty_t *nulltty);
+int nulltty_proxy(nulltty_t *nulltty, sig_atomic_t *exit_flag);
 
 #endif /* ! defined _NULLTTY_PTYS_H_ */
