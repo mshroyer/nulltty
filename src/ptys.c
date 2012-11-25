@@ -1,7 +1,9 @@
 #include <stubs.h>
 
 #include <assert.h>
+#include <errno.h>
 #include <fcntl.h>
+#include <limits.h>
 #include <signal.h>
 #include <stdlib.h>
 #include <string.h>
@@ -49,11 +51,15 @@ static int openpty(struct nulltty_endpoint *ep, const char *link)
     if ( ep->fd < 0 )
         goto error_openpt;
 
-    /* TODO platform's max path name length? */
-    link_len = strlen(link);
+    link_len = strnlen(link, PATH_MAX);
+    if ( link[link_len] != '\0' ) {
+        errno = ENAMETOOLONG;
+        goto error_link_name;
+    }
+
     ep->link = calloc(link_len+1, sizeof(char));
     if ( ep->link == NULL )
-        goto error_calloc;
+        goto error_link_name;
 
     strlcpy(ep->link, link, link_len+1);
 
@@ -71,7 +77,7 @@ static int openpty(struct nulltty_endpoint *ep, const char *link)
     free(ep->read_buf);
  error_read_buf:
     free(ep->link);
- error_calloc:
+ error_link_name:
     close(ep->fd);
  error_openpt:
     return -1;
