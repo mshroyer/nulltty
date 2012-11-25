@@ -10,20 +10,21 @@
  */
 #define READ_BUF_SZ 1024
 
-struct nulltty_endpoint {
+struct nulltty_pty {
     int fd;
     int slave_fd;
     char *link;
     uint8_t *read_buf;
-    size_t read_i;
+    size_t read_n;
 };
 
 struct nulltty {
-    struct nulltty_endpoint a;
-    struct nulltty_endpoint b;
+    struct nulltty_pty a;
+    struct nulltty_pty b;
 };
 
 typedef struct nulltty nulltty_t;
+typedef struct nulltty_pty nulltty_pty_t;
 
 /**
  * Opens a pair of pseudoterminals and creates requested symlinks

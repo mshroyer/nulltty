@@ -43,12 +43,12 @@ static int platform_closept(int fd)
     return close(fd);
 }
 
-static int openpty(struct nulltty_endpoint *ep, const char *link)
+static int openpty(nulltty_pty_t *pty, const char *link)
 {
     int link_len;
 
-    ep->fd = platform_openpt();
-    if ( ep->fd < 0 )
+    pty->fd = platform_openpt();
+    if ( pty->fd < 0 )
         goto error_openpt;
 
     /*
@@ -58,8 +58,8 @@ static int openpty(struct nulltty_endpoint *ep, const char *link)
      * this, preventing more complicated error handling in our select()
      * loop.
      */
-    ep->slave_fd = open(ptsname(ep->fd), O_RDWR | O_NOCTTY | O_NONBLOCK);
-    if ( ep->slave_fd < 0 )
+    pty->slave_fd = open(ptsname(pty->fd), O_RDWR | O_NOCTTY | O_NONBLOCK);
+    if ( pty->slave_fd < 0 )
         goto error_open_slave;
 
     link_len = strnlen(link, PATH_MAX);
@@ -68,49 +68,49 @@ static int openpty(struct nulltty_endpoint *ep, const char *link)
         goto error_link_name;
     }
 
-    ep->link = calloc(link_len+1, sizeof(char));
-    if ( ep->link == NULL )
+    pty->link = calloc(link_len+1, sizeof(char));
+    if ( pty->link == NULL )
         goto error_link_name;
 
-    strlcpy(ep->link, link, link_len+1);
+    strlcpy(pty->link, link, link_len+1);
 
-    ep->read_buf = calloc(READ_BUF_SZ, 1);
-    if ( ep->read_buf == NULL )
+    pty->read_buf = calloc(READ_BUF_SZ, 1);
+    if ( pty->read_buf == NULL )
         goto error_read_buf;
-    ep->read_i = 0;
+    pty->read_n = 0;
 
-    if ( symlink(ptsname(ep->fd), link) < 0 )
+    if ( symlink(ptsname(pty->fd), link) < 0 )
         goto error_symlink;
 
     return 0;
 
  error_symlink:
-    free(ep->read_buf);
+    free(pty->read_buf);
  error_read_buf:
-    free(ep->link);
+    free(pty->link);
  error_link_name:
-    close(ep->slave_fd);
+    close(pty->slave_fd);
  error_open_slave:
-    close(ep->fd);
+    close(pty->fd);
  error_openpt:
     return -1;
 }
 
-static int closepty(struct nulltty_endpoint *ep)
+static int closepty(nulltty_pty_t *pty)
 {
     int result = 0;
 
-    if ( close(ep->slave_fd) < 0 )
+    if ( close(pty->slave_fd) < 0 )
         result = -1;
 
-    if ( close(ep->fd) < 0 )
+    if ( close(pty->fd) < 0 )
         result = -1;
 
-    if ( unlink(ep->link) < 0 )
+    if ( unlink(pty->link) < 0 )
         result = -1;
 
-    free(ep->link);
-    ep->link = NULL;
+    free(pty->link);
+    pty->link = NULL;
 
     return result;
 }
@@ -150,38 +150,38 @@ int closeptys(nulltty_t *nulltty)
     return result;
 }
 
-static int writepty(struct nulltty_endpoint *ep, struct nulltty_endpoint *paired)
+static int writepty(nulltty_pty_t *pty, nulltty_pty_t *pty_src)
 {
     int n;
 
-    n = write(ep->fd, paired->read_buf, paired->read_i);
+    n = write(pty->fd, pty_src->read_buf, pty_src->read_n);
     if ( n < 0 )
         return -1;
 
-    assert(n <= paired->read_i);
+    assert(n <= pty_src->read_n);
 
     if ( n > 0 ) {
-        memmove(paired->read_buf, paired->read_buf + n, paired->read_i - n);
-        paired->read_i -= n;
+        memmove(pty_src->read_buf, pty_src->read_buf + n, pty_src->read_n - n);
+        pty_src->read_n -= n;
     }
 
-    assert(paired->read_i >= 0);
-    assert(paired->read_i <= READ_BUF_SZ);
+    assert(pty_src->read_n >= 0);
+    assert(pty_src->read_n <= READ_BUF_SZ);
     return 0;
 }
 
-static int readpty(struct nulltty_endpoint *ep)
+static int readpty(nulltty_pty_t *pty)
 {
     int n;
 
-    n = read(ep->fd, ep->read_buf, READ_BUF_SZ - ep->read_i);
+    n = read(pty->fd, pty->read_buf, READ_BUF_SZ - pty->read_n);
     if ( n < 0 )
         return -1;
 
-    ep->read_i += n;
+    pty->read_n += n;
 
-    assert(ep->read_i >= 0);
-    assert(ep->read_i <= READ_BUF_SZ);
+    assert(pty->read_n >= 0);
+    assert(pty->read_n <= READ_BUF_SZ);
     return 0;
 }
 
@@ -194,14 +194,14 @@ int proxyptys(nulltty_t *nulltty)
         FD_ZERO(&rfds);
         FD_ZERO(&wfds);
 
-        if ( nulltty->a.read_i < READ_BUF_SZ - 1 )
+        if ( nulltty->a.read_n < READ_BUF_SZ - 1 )
             FD_SET(nulltty->a.fd, &rfds);
-        if ( nulltty->b.read_i < READ_BUF_SZ - 1 )
+        if ( nulltty->b.read_n < READ_BUF_SZ - 1 )
             FD_SET(nulltty->b.fd, &rfds);
 
-        if ( nulltty->b.read_i > 0 )
+        if ( nulltty->b.read_n > 0 )
             FD_SET(nulltty->a.fd, &wfds);
-        if ( nulltty->a.read_i > 0 )
+        if ( nulltty->a.read_n > 0 )
             FD_SET(nulltty->b.fd, &wfds);
 
         if ( select(nfds, &rfds, &wfds, NULL, NULL) < 0 ) {
