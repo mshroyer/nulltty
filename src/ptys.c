@@ -183,41 +183,6 @@ int nulltty_close(nulltty_t *nulltty)
     return result;
 }
 
-static int writepty(nulltty_pty_t *pty, nulltty_pty_t *pty_src)
-{
-    int n;
-
-    n = write(pty->fd, pty_src->read_buf, pty_src->read_n);
-    if ( n < 0 )
-        return -1;
-
-    assert(n <= pty_src->read_n);
-
-    if ( n > 0 ) {
-        memmove(pty_src->read_buf, pty_src->read_buf + n, pty_src->read_n - n);
-        pty_src->read_n -= n;
-    }
-
-    assert(pty_src->read_n >= 0);
-    assert(pty_src->read_n <= READ_BUF_SZ);
-    return 0;
-}
-
-static int readpty(nulltty_pty_t *pty)
-{
-    int n;
-
-    n = read(pty->fd, pty->read_buf, READ_BUF_SZ - pty->read_n);
-    if ( n < 0 )
-        return -1;
-
-    pty->read_n += n;
-
-    assert(pty->read_n >= 0);
-    assert(pty->read_n <= READ_BUF_SZ);
-    return 0;
-}
-
 /**
  * Prepare select() fd_sets for this iteration of the proxy
  *
@@ -260,16 +225,29 @@ static void proxy_set_fds(nulltty_pty_t *pty_dst, nulltty_pty_t *pty_src,
 static int proxy_shuffle_data(nulltty_pty_t *pty_dst, nulltty_pty_t *pty_src,
                               fd_set *rfds, fd_set *wfds)
 {
+    int n;
+
     if ( FD_ISSET(pty_dst->fd, wfds) ) {
-        if ( writepty(pty_dst, pty_src) < 0 )
+        n = write(pty_dst->fd, pty_src->read_buf, pty_src->read_n);
+        if ( n < 0 )
             return -1;
+
+        if ( n > 0 ) {
+            memmove(pty_src->read_buf, pty_src->read_buf + n, pty_src->read_n - n);
+            pty_src->read_n -= n;
+        }
     }
 
     if ( FD_ISSET(pty_src->fd, rfds) ) {
-        if ( readpty(pty_src) < 0 )
+        n = read(pty_src->fd, pty_src->read_buf, READ_BUF_SZ - pty_src->read_n);
+        if ( n < 0 )
             return -1;
+
+        pty_src->read_n += n;
     }
 
+    assert(pty_src->read_n >= 0);
+    assert(pty_src->read_n <= READ_BUF_SZ);
     return 0;
 }
 
