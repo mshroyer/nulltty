@@ -185,6 +185,32 @@ static int readpty(nulltty_pty_t *pty)
     return 0;
 }
 
+static void proxyptys_set_fds(nulltty_pty_t *pty_dst, nulltty_pty_t *pty_src,
+                              fd_set *rfds, fd_set *wfds)
+{
+    if ( pty_src->read_n < READ_BUF_SZ - 1 )
+        FD_SET(pty_src->fd, rfds);
+
+    if ( pty_src->read_n > 0 )
+        FD_SET(pty_dst->fd, wfds);
+}
+
+static int proxyptys_shuffle_data(nulltty_pty_t *pty_dst, nulltty_pty_t *pty_src,
+                                  fd_set *rfds, fd_set *wfds)
+{
+    if ( FD_ISSET(pty_dst->fd, wfds) ) {
+        if ( writepty(pty_dst, pty_src) < 0 )
+            return -1;
+    }
+
+    if ( FD_ISSET(pty_src->fd, rfds) ) {
+        if ( readpty(pty_src) < 0 )
+            return -1;
+    }
+
+    return 0;
+}
+
 int proxyptys(nulltty_t *nulltty)
 {
     int nfds = MAX(nulltty->a.fd, nulltty->b.fd) + 1;
@@ -194,38 +220,18 @@ int proxyptys(nulltty_t *nulltty)
         FD_ZERO(&rfds);
         FD_ZERO(&wfds);
 
-        if ( nulltty->a.read_n < READ_BUF_SZ - 1 )
-            FD_SET(nulltty->a.fd, &rfds);
-        if ( nulltty->b.read_n < READ_BUF_SZ - 1 )
-            FD_SET(nulltty->b.fd, &rfds);
-
-        if ( nulltty->b.read_n > 0 )
-            FD_SET(nulltty->a.fd, &wfds);
-        if ( nulltty->a.read_n > 0 )
-            FD_SET(nulltty->b.fd, &wfds);
+        proxyptys_set_fds(&nulltty->a, &nulltty->b, &rfds, &wfds);
+        proxyptys_set_fds(&nulltty->b, &nulltty->a, &rfds, &wfds);
 
         if ( select(nfds, &rfds, &wfds, NULL, NULL) < 0 ) {
             /* TODO error (incl. signal) handling */
             perror("Select returned an error");
         }
 
-        if ( FD_ISSET(nulltty->a.fd, &wfds) ) {
-            if ( writepty(&nulltty->a, &nulltty->b) < 0 )
-                return -1;
-        }
-        if ( FD_ISSET(nulltty->b.fd, &wfds) ) {
-            if ( writepty(&nulltty->b, &nulltty->a) < 0 )
-                return -1;
-        }
-
-        if ( FD_ISSET(nulltty->a.fd, &rfds) ) {
-            if ( readpty(&nulltty->a) < 0 )
-                return -1;
-        }
-        if ( FD_ISSET(nulltty->b.fd, &rfds) ) {
-            if ( readpty(&nulltty->b) < 0 )
-                return -1;
-        }
+        if ( proxyptys_shuffle_data(&nulltty->a, &nulltty->b, &rfds, &wfds) < 0 )
+            return -1;
+        if ( proxyptys_shuffle_data(&nulltty->b, &nulltty->a, &rfds, &wfds) < 0 )
+            return -1;
     }
 
     return 0;
