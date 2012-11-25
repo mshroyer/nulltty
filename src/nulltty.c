@@ -87,18 +87,18 @@ int main(int argc, char* argv[])
     link_a = argv[argc-2];
     link_b = argv[argc-1];
 
-    nulltty = openptys(link_a, link_b);
+    nulltty = nulltty_open(link_a, link_b);
     if ( nulltty == NULL ) {
         perror("Error opening requested PTYs");
         return 1;
     }
 
-    if ( proxyptys(nulltty) < 0 ) {
+    if ( nulltty_proxy(nulltty) < 0 ) {
         perror("Proxying failed");
-        closeptys(nulltty);
+        nulltty_close(nulltty);
         return 2;
     }
 
-    closeptys(nulltty);
+    nulltty_close(nulltty);
     return 0;
 }

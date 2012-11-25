@@ -37,7 +37,7 @@ typedef struct nulltty_pty nulltty_pty_t;
  * @param link_b Symlink name for tty B
  * @return Pointer to nulltty struct with PTY info, or NULL on error
  */
-nulltty_t *openptys(const char *link_a, const char *link_b);
+nulltty_t *nulltty_open(const char *link_a, const char *link_b);
 
 /**
  * Closes a pair of pseudoterminals and cleans up their symlinks
@@ -45,7 +45,7 @@ nulltty_t *openptys(const char *link_a, const char *link_b);
  * @param nulltty Pointer to structure returned by openptys()
  * @return 0 on success or -1 on error
  */
-int closeptys(nulltty_t *nulltty);
+int nulltty_close(nulltty_t *nulltty);
 
 /**
  * Proxy data between the pseudoterminal pair
@@ -56,6 +56,6 @@ int closeptys(nulltty_t *nulltty);
  * @param nulltty Pointer to structure returned by openptys()
  * @return 0 on success (user request termination), -1 on error
  */
-int proxyptys(nulltty_t *nulltty);
+int nulltty_proxy(nulltty_t *nulltty);
 
 #endif /* ! defined _NULLTTY_PTYS_H_ */
