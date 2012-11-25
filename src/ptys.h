@@ -57,6 +57,6 @@ int nulltty_close(nulltty_t *nulltty);
  * @param exit_flag Flag to signal program termination
  * @return 0 on success (user request termination), -1 on error
  */
-int nulltty_proxy(nulltty_t *nulltty, sig_atomic_t *exit_flag);
+int nulltty_proxy(nulltty_t *nulltty, volatile sig_atomic_t *exit_flag);
 
 #endif /* ! defined _NULLTTY_PTYS_H_ */

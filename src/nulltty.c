@@ -12,6 +12,17 @@
 #include "ptys.h"
 
 
+static volatile sig_atomic_t exit_flag = 0;
+
+static void sighup_handler(int signum)
+{
+}
+
+static void sigterm_handler(int signum)
+{
+    exit_flag = 1;
+}
+
 static void print_usage(int retval)
 {
     const char *usage_info =
@@ -54,7 +65,26 @@ int main(int argc, char* argv[])
     bool daemonize = false, verbose = false;
     char *pid_file = NULL;
     const char *link_a, *link_b;
-    sig_atomic_t exit_flag = 0;
+    struct sigaction action;
+
+    memset(&action, 0, sizeof(action));
+    sigemptyset(&action.sa_mask);
+
+    action.sa_handler = sigterm_handler;
+    if ( sigaction(SIGINT, &action, NULL) < 0 ) {
+        perror("Unable to establish SIGINT handler");
+        return 1;
+    }
+    if ( sigaction(SIGTERM, &action, NULL) < 0 ) {
+        perror("Unable to establish SIGTERM handler");
+        return 1;
+    }
+
+    action.sa_handler = sighup_handler;
+    if ( sigaction(SIGHUP, &action, NULL) < 0 ) {
+        perror("Unable to establish SIGHUP handler");
+        return 1;
+    }
 
     while ( ( c = getopt_long(argc, argv, options,
                               long_options, &longindex) ) != -1 ) {

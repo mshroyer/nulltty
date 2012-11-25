@@ -235,7 +235,7 @@ static int proxy_shuffle_data(nulltty_pty_t *pty_dst, nulltty_pty_t *pty_src,
     return 0;
 }
 
-int nulltty_proxy(nulltty_t *nulltty, sig_atomic_t *exit_flag)
+int nulltty_proxy(nulltty_t *nulltty, volatile sig_atomic_t *exit_flag)
 {
     int nfds = MAX(nulltty->a.fd, nulltty->b.fd) + 1;
     fd_set rfds, wfds;
@@ -247,10 +247,8 @@ int nulltty_proxy(nulltty_t *nulltty, sig_atomic_t *exit_flag)
         proxy_set_fds(&nulltty->a, &nulltty->b, &rfds, &wfds);
         proxy_set_fds(&nulltty->b, &nulltty->a, &rfds, &wfds);
 
-        if ( select(nfds, &rfds, &wfds, NULL, NULL) < 0 ) {
-            /* TODO error (incl. signal) handling */
-            perror("Select returned an error");
-        }
+        if ( select(nfds, &rfds, &wfds, NULL, NULL) < 0 )
+            return -1;
 
         if ( proxy_shuffle_data(&nulltty->a, &nulltty->b, &rfds, &wfds) < 0 )
             return -1;
