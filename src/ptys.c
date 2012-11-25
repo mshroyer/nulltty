@@ -239,6 +239,7 @@ int nulltty_proxy(nulltty_t *nulltty, volatile sig_atomic_t *exit_flag)
 {
     int nfds = MAX(nulltty->a.fd, nulltty->b.fd) + 1;
     fd_set rfds, wfds;
+    int saved_errno;
 
     while ( *exit_flag == 0 ) {
         FD_ZERO(&rfds);
@@ -247,8 +248,25 @@ int nulltty_proxy(nulltty_t *nulltty, volatile sig_atomic_t *exit_flag)
         proxy_set_fds(&nulltty->a, &nulltty->b, &rfds, &wfds);
         proxy_set_fds(&nulltty->b, &nulltty->a, &rfds, &wfds);
 
-        if ( select(nfds, &rfds, &wfds, NULL, NULL) < 0 )
-            return -1;
+        /* TODO eliminate race condition with pselect() */
+        if ( select(nfds, &rfds, &wfds, NULL, NULL) < 0 ) {
+            saved_errno = errno;
+
+#ifdef DEBUG
+
+            printf("Select returned with errno: (%d) %s\n", saved_errno,
+                   strerror(saved_errno));
+
+#endif /* DEBUG */
+
+            switch ( saved_errno ) {
+            case EINTR:
+                continue;
+
+            default:
+                return -1;
+            }
+        }
 
         if ( proxy_shuffle_data(&nulltty->a, &nulltty->b, &rfds, &wfds) < 0 )
             return -1;
