@@ -12,6 +12,7 @@
 
 struct nulltty_endpoint {
     int fd;
+    int slave_fd;
     char *link;
     uint8_t *read_buf;
     size_t read_i;

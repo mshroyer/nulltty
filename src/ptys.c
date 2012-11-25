@@ -20,7 +20,7 @@ static int platform_openpt()
 {
     int fd;
 
-    fd = posix_openpt(O_RDWR | O_NOCTTY);
+    fd = posix_openpt(O_RDWR | O_NOCTTY | O_NONBLOCK);
     if ( fd < 0 )
         goto error;
 
@@ -51,6 +51,17 @@ static int openpty(struct nulltty_endpoint *ep, const char *link)
     if ( ep->fd < 0 )
         goto error_openpt;
 
+    /*
+     * On Linux at least, when the last fd of the slave PTY is closed an
+     * error condition is set, causing reads of the master side to result
+     * in EIO.  By holding our own copy of the slave PTY open we can avoid
+     * this, preventing more complicated error handling in our select()
+     * loop.
+     */
+    ep->slave_fd = open(ptsname(ep->fd), O_RDWR | O_NOCTTY | O_NONBLOCK);
+    if ( ep->slave_fd < 0 )
+        goto error_open_slave;
+
     link_len = strnlen(link, PATH_MAX);
     if ( link[link_len] != '\0' ) {
         errno = ENAMETOOLONG;
@@ -78,6 +89,8 @@ static int openpty(struct nulltty_endpoint *ep, const char *link)
  error_read_buf:
     free(ep->link);
  error_link_name:
+    close(ep->slave_fd);
+ error_open_slave:
     close(ep->fd);
  error_openpt:
     return -1;
@@ -86,6 +99,9 @@ static int openpty(struct nulltty_endpoint *ep, const char *link)
 static int closepty(struct nulltty_endpoint *ep)
 {
     int result = 0;
+
+    if ( close(ep->slave_fd) < 0 )
+        result = -1;
 
     if ( close(ep->fd) < 0 )
         result = -1;
@@ -159,7 +175,6 @@ static int readpty(struct nulltty_endpoint *ep)
     int n;
 
     n = read(ep->fd, ep->read_buf, READ_BUF_SZ - ep->read_i);
-    /* TODO Don't error out on client closing PTY slave */
     if ( n < 0 )
         return -1;
 
