@@ -1,9 +1,20 @@
 #ifndef _NULLTTY_PTYS_H_
 #define _NULLTTY_PTYS_H_
 
+#include <stdint.h>
+
+/**
+ * Size of the half-duplex buffer between pseudoterminals
+ *
+ * Two of these will be allocated for each PTY pair.
+ */
+#define READ_BUF_SZ 1024
+
 struct nulltty_endpoint {
     int fd;
     char *link;
+    uint8_t *read_buf;
+    size_t read_i;
 };
 
 struct nulltty {
@@ -33,5 +44,16 @@ nulltty_t *openptys(const char *link_a, const char *link_b);
  * @return 0 on success or -1 on error
  */
 int closeptys(nulltty_t *nulltty);
+
+/**
+ * Proxy data between the pseudoterminal pair
+ *
+ * Implements the program's main loop behavior of ferrying data between the
+ * two pseudoterminal devices.
+ *
+ * @param nulltty Pointer to structure returned by openptys()
+ * @return 0 on success (user request termination), -1 on error
+ */
+int proxyptys(nulltty_t *nulltty);
 
 #endif /* ! defined _NULLTTY_PTYS_H_ */

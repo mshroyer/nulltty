@@ -2,11 +2,18 @@
 
 #include <fcntl.h>
 #include <getopt.h>
+#include <signal.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/select.h>
+#include <unistd.h>
 
 #include "ptys.h"
+
+
+/** Should the application main loop terminate due to user request? */
+volatile sig_atomic_t shutdown = 0;
 
 static void print_usage(int retval)
 {
@@ -86,9 +93,12 @@ int main(int argc, char* argv[])
         return 1;
     }
 
-    getchar();
+    if ( proxyptys(nulltty) < 0 ) {
+        perror("Proxying failed");
+        closeptys(nulltty);
+        return 2;
+    }
 
     closeptys(nulltty);
-
     return 0;
 }
