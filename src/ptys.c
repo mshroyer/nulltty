@@ -13,6 +13,8 @@
 #include "ptys.h"
 
 
+/*** DATA STRUCTURES **********************************************************/
+
 struct nulltty_pty {
     int fd;
     int slave_fd;
@@ -25,6 +27,9 @@ struct nulltty {
     struct nulltty_pty a;
     struct nulltty_pty b;
 };
+
+
+/*** HELPER FUNCTIONS *********************************************************/
 
 #define MAX(a, b) ((a)>(b)) ? (a) : (b)
 
@@ -146,41 +151,6 @@ static int closepty(struct nulltty_pty *pty)
     return result;
 }
 
-nulltty_t nulltty_open(const char *link_a, const char *link_b)
-{
-    nulltty_t nulltty = NULL;
-
-    nulltty = calloc(1, sizeof(struct nulltty));
-    if ( nulltty == NULL )
-        goto error_nulltty;
-
-    if ( openpty(&nulltty->a, link_a) < 0 )
-        goto error_link_a;
-
-    if ( openpty(&nulltty->b, link_b) < 0 )
-        goto error_link_b;
-
-    return nulltty;
-
- error_link_b:
-    closepty(&nulltty->a);
- error_link_a:
-    free(nulltty);
- error_nulltty:
-    return NULL;
-}
-
-int nulltty_close(nulltty_t nulltty)
-{
-    int result = 0;
-
-    result += closepty(&nulltty->a);
-    result += closepty(&nulltty->b);
-    free(nulltty);
-
-    return result;
-}
-
 /**
  * Prepare select() fd_sets for this iteration of the proxy
  *
@@ -267,6 +237,44 @@ static int proxy_shuffle_data(struct nulltty_pty *pty_dst,
     assert(pty_src->read_n >= 0);
     assert(pty_src->read_n <= READ_BUF_SZ);
     return 0;
+}
+
+
+/*** API **********************************************************************/
+
+nulltty_t nulltty_open(const char *link_a, const char *link_b)
+{
+    nulltty_t nulltty = NULL;
+
+    nulltty = calloc(1, sizeof(struct nulltty));
+    if ( nulltty == NULL )
+        goto error_nulltty;
+
+    if ( openpty(&nulltty->a, link_a) < 0 )
+        goto error_link_a;
+
+    if ( openpty(&nulltty->b, link_b) < 0 )
+        goto error_link_b;
+
+    return nulltty;
+
+ error_link_b:
+    closepty(&nulltty->a);
+ error_link_a:
+    free(nulltty);
+ error_nulltty:
+    return NULL;
+}
+
+int nulltty_close(nulltty_t nulltty)
+{
+    int result = 0;
+
+    result += closepty(&nulltty->a);
+    result += closepty(&nulltty->b);
+    free(nulltty);
+
+    return result;
 }
 
 int nulltty_proxy(nulltty_t nulltty, volatile sig_atomic_t *exit_flag)
