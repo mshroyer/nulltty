@@ -23,6 +23,7 @@ struct nulltty_pty {
     size_t read_n;
 #ifdef DEBUG
     size_t read_total;
+    size_t write_total;
 #endif
 };
 
@@ -30,6 +31,38 @@ struct nulltty {
     struct nulltty_pty a;
     struct nulltty_pty b;
 };
+
+
+/*** DEBUGGING INSTRUMENTATION ************************************************/
+
+#ifdef DEBUG
+
+static unsigned long nsyscalls = 0;
+static unsigned long nselects = 0;
+
+static inline ssize_t debug_read(int fd, void *buf, size_t count) {
+    nsyscalls++;
+    return read(fd, buf, count);
+}
+
+static inline ssize_t debug_write(int fd, const void *buf, size_t count) {
+    nsyscalls++;
+    return write(fd, buf, count);
+}
+
+static inline ssize_t debug_select(int nfds, fd_set *readfds, fd_set *writefds,
+                                   fd_set *exceptfds, struct timeval *timeout)
+{
+    nsyscalls++;
+    nselects++;
+    return select(nfds, readfds, writefds, exceptfds, timeout);
+}
+
+#define read(...) debug_read(__VA_ARGS__)
+#define write(...) debug_write(__VA_ARGS__)
+#define select(...) debug_select(__VA_ARGS__)
+
+#endif /* DEBUG */
 
 
 /*** HELPER FUNCTIONS *********************************************************/
@@ -92,6 +125,8 @@ static int openpty(struct nulltty_pty *pty, const char *link)
     pty->slave_fd = open(ptsname(pty->fd), O_RDWR | O_NOCTTY | O_NONBLOCK);
     if ( pty->slave_fd < 0 )
         goto error_open_slave;
+
+    /* TODO cfmakeraw() etc. on the slave tty file descriptor */
 
     link_len = strnlen(link, PATH_MAX);
     if ( link[link_len] != '\0' ) {
@@ -199,23 +234,17 @@ static int proxy_shuffle_data(struct nulltty_pty *pty_dst,
                               fd_set *rfds, fd_set *wfds)
 {
     ssize_t n;
-#ifdef DEBUG
-    bool buffer_touched = false;
-#endif
 
     if ( FD_ISSET(pty_src->fd, rfds) ) {
         n = read(pty_src->fd, pty_src->read_buf, READ_BUF_SZ - pty_src->read_n);
         if ( n < 0 )
             return -1;
 
-#ifdef DEBUG
-        printf("Read from %s: %zd bytes\n", pty_src->link, n);
-        pty_src->read_total += n;
-        printf("Total read from %s: %zd bytes\n", pty_src->link, pty_src->read_total);
-        buffer_touched = true;
-#endif
-
         pty_src->read_n += n;
+
+#ifdef DEBUG
+        pty_src->read_total += n;
+#endif
     }
 
     if ( FD_ISSET(pty_dst->fd, wfds) ) {
@@ -223,21 +252,15 @@ static int proxy_shuffle_data(struct nulltty_pty *pty_dst,
         if ( n < 0 )
             return -1;
 
-#ifdef DEBUG
-        printf("Write to %s: %zd bytes\n", pty_dst->link, n);
-        buffer_touched = true;
-#endif
-
         if ( n > 0 ) {
             memmove(pty_src->read_buf, pty_src->read_buf + n, pty_src->read_n - n);
             pty_src->read_n -= n;
         }
-    }
 
 #ifdef DEBUG
-    if ( buffer_touched )
-        printf("Buffer of %s: %zd bytes\n", pty_src->link, pty_src->read_n);
+        pty_dst->write_total += n;
 #endif
+    }
 
     assert(pty_src->read_n >= 0);
     assert(pty_src->read_n <= READ_BUF_SZ);
@@ -245,7 +268,7 @@ static int proxy_shuffle_data(struct nulltty_pty *pty_dst,
 }
 
 
-/*** API **********************************************************************/
+/*** INTERFACE FUNCTIONS ******************************************************/
 
 nulltty_t nulltty_open(const char *link_a, const char *link_b)
 {
@@ -299,11 +322,6 @@ int nulltty_proxy(nulltty_t nulltty, volatile sig_atomic_t *exit_flag)
         if ( select(nfds, &rfds, &wfds, NULL, NULL) < 0 ) {
             saved_errno = errno;
 
-#ifdef DEBUG
-            printf("Select returned with errno: (%d) %s\n", saved_errno,
-                   strerror(saved_errno));
-#endif
-
             switch ( saved_errno ) {
             case EINTR:
                 continue;
@@ -319,7 +337,10 @@ int nulltty_proxy(nulltty_t nulltty, volatile sig_atomic_t *exit_flag)
             return -1;
 
 #ifdef DEBUG
-        printf("\n");
+        printf("%lu\t%lu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\n",
+               nselects, nsyscalls,
+               nulltty->a.read_n, nulltty->a.read_total, nulltty->a.write_total,
+               nulltty->b.read_n, nulltty->b.read_total, nulltty->b.write_total);
 #endif
     }
 
