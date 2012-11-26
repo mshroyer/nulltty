@@ -53,7 +53,7 @@ static void print_usage(int retval)
 
 int main(int argc, char* argv[])
 {
-    nulltty_t *nulltty;
+    nulltty_t nulltty;
     int longindex, c = 0;
     const char *options = "hdp:v";
     const struct option long_options[] = {

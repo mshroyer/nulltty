@@ -13,6 +13,19 @@
 #include "ptys.h"
 
 
+struct nulltty_pty {
+    int fd;
+    int slave_fd;
+    char *link;
+    uint8_t *read_buf;
+    size_t read_n;
+};
+
+struct nulltty {
+    struct nulltty_pty a;
+    struct nulltty_pty b;
+};
+
 #define MAX(a, b) ((a)>(b)) ? (a) : (b)
 
 static int platform_openpt()
@@ -53,7 +66,7 @@ static int platform_closept(int fd)
  * @param link Name of symbolic link requested for this PTY slave
  * @return 0 on success, -1 with errno on error
  */
-static int openpty(nulltty_pty_t *pty, const char *link)
+static int openpty(struct nulltty_pty *pty, const char *link)
 {
     int link_len;
 
@@ -114,7 +127,7 @@ static int openpty(nulltty_pty_t *pty, const char *link)
  * @param pty Pseudoterminal descriptor to close
  * @return 0 on success, -1 with errno on error
  */
-static int closepty(nulltty_pty_t *pty)
+static int closepty(struct nulltty_pty *pty)
 {
     int result = 0;
 
@@ -133,11 +146,11 @@ static int closepty(nulltty_pty_t *pty)
     return result;
 }
 
-nulltty_t *nulltty_open(const char *link_a, const char *link_b)
+nulltty_t nulltty_open(const char *link_a, const char *link_b)
 {
-    nulltty_t *nulltty = NULL;
+    nulltty_t nulltty = NULL;
 
-    nulltty = calloc(1, sizeof(nulltty_t));
+    nulltty = calloc(1, sizeof(struct nulltty));
     if ( nulltty == NULL )
         goto error_nulltty;
 
@@ -157,7 +170,7 @@ nulltty_t *nulltty_open(const char *link_a, const char *link_b)
     return NULL;
 }
 
-int nulltty_close(nulltty_t *nulltty)
+int nulltty_close(nulltty_t nulltty)
 {
     int result = 0;
 
@@ -182,7 +195,8 @@ int nulltty_close(nulltty_t *nulltty)
  * @param rfds Pointer to read fd_set
  * @param wfds Pointer to write fd_set
  */
-static void proxy_set_fds(nulltty_pty_t *pty_dst, nulltty_pty_t *pty_src,
+static void proxy_set_fds(struct nulltty_pty *pty_dst,
+                          struct nulltty_pty *pty_src,
                           fd_set *rfds, fd_set *wfds)
 {
     if ( pty_src->read_n < READ_BUF_SZ - 1 )
@@ -207,7 +221,8 @@ static void proxy_set_fds(nulltty_pty_t *pty_dst, nulltty_pty_t *pty_src,
  * @param wfds Pointer to write fd_set
  * @return 0 on success, -1 with errno on error
  */
-static int proxy_shuffle_data(nulltty_pty_t *pty_dst, nulltty_pty_t *pty_src,
+static int proxy_shuffle_data(struct nulltty_pty *pty_dst,
+                              struct nulltty_pty *pty_src,
                               fd_set *rfds, fd_set *wfds)
 {
     ssize_t n;
@@ -254,7 +269,7 @@ static int proxy_shuffle_data(nulltty_pty_t *pty_dst, nulltty_pty_t *pty_src,
     return 0;
 }
 
-int nulltty_proxy(nulltty_t *nulltty, volatile sig_atomic_t *exit_flag)
+int nulltty_proxy(nulltty_t nulltty, volatile sig_atomic_t *exit_flag)
 {
     int nfds = MAX(nulltty->a.fd, nulltty->b.fd) + 1;
     fd_set rfds, wfds;
