@@ -5,6 +5,7 @@
 #include <fcntl.h>
 #include <limits.h>
 #include <signal.h>
+#include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -209,7 +210,10 @@ static void proxy_set_fds(nulltty_pty_t *pty_dst, nulltty_pty_t *pty_src,
 static int proxy_shuffle_data(nulltty_pty_t *pty_dst, nulltty_pty_t *pty_src,
                               fd_set *rfds, fd_set *wfds)
 {
-    int n;
+    ssize_t n;
+#ifdef DEBUG
+    bool buffer_touched = false;
+#endif
 
     if ( FD_ISSET(pty_src->fd, rfds) ) {
         n = read(pty_src->fd, pty_src->read_buf, READ_BUF_SZ - pty_src->read_n);
@@ -217,7 +221,8 @@ static int proxy_shuffle_data(nulltty_pty_t *pty_dst, nulltty_pty_t *pty_src,
             return -1;
 
 #ifdef DEBUG
-        printf("Read from %s: %d bytes\n", pty_src->link, n);
+        printf("Read from %s: %zd bytes\n", pty_src->link, n);
+        buffer_touched = true;
 #endif
 
         pty_src->read_n += n;
@@ -229,7 +234,8 @@ static int proxy_shuffle_data(nulltty_pty_t *pty_dst, nulltty_pty_t *pty_src,
             return -1;
 
 #ifdef DEBUG
-        printf("Write to %s: %d bytes\n", pty_dst->link, n);
+        printf("Write to %s: %zd bytes\n", pty_dst->link, n);
+        buffer_touched = true;
 #endif
 
         if ( n > 0 ) {
@@ -237,6 +243,11 @@ static int proxy_shuffle_data(nulltty_pty_t *pty_dst, nulltty_pty_t *pty_src,
             pty_src->read_n -= n;
         }
     }
+
+#ifdef DEBUG
+    if ( buffer_touched )
+        printf("Buffer of %s: %zd bytes\n", pty_src->link, pty_src->read_n);
+#endif
 
     assert(pty_src->read_n >= 0);
     assert(pty_src->read_n <= READ_BUF_SZ);
