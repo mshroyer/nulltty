@@ -21,6 +21,9 @@ struct nulltty_pty {
     char *link;
     uint8_t *read_buf;
     size_t read_n;
+#ifdef DEBUG
+    size_t read_total;
+#endif
 };
 
 struct nulltty {
@@ -207,6 +210,8 @@ static int proxy_shuffle_data(struct nulltty_pty *pty_dst,
 
 #ifdef DEBUG
         printf("Read from %s: %zd bytes\n", pty_src->link, n);
+        pty_src->read_total += n;
+        printf("Total read from %s: %zd bytes\n", pty_src->link, pty_src->read_total);
         buffer_touched = true;
 #endif
 
@@ -312,6 +317,10 @@ int nulltty_proxy(nulltty_t nulltty, volatile sig_atomic_t *exit_flag)
             return -1;
         if ( proxy_shuffle_data(&nulltty->b, &nulltty->a, &rfds, &wfds) < 0 )
             return -1;
+
+#ifdef DEBUG
+        printf("\n");
+#endif
     }
 
     return 0;

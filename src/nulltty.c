@@ -12,6 +12,8 @@
 #include "ptys.h"
 
 
+/*** SIGNAL HANDLERS **********************************************************/
+
 static volatile sig_atomic_t exit_flag = 0;
 
 static void sighup_handler(int signum)
@@ -22,6 +24,9 @@ static void sigterm_handler(int signum)
 {
     exit_flag = 1;
 }
+
+
+/*** HELPER FUNCTIONS *********************************************************/
 
 static void print_usage(int retval)
 {
@@ -51,6 +56,9 @@ static void print_usage(int retval)
     exit(retval);
 }
 
+
+/*** MAIN PROGRAM *************************************************************/
+
 int main(int argc, char* argv[])
 {
     nulltty_t nulltty;
@@ -66,6 +74,8 @@ int main(int argc, char* argv[])
     char *pid_file = NULL;
     const char *link_a, *link_b;
     struct sigaction action;
+
+    /*** Establish signal handlers ***/
 
     memset(&action, 0, sizeof(action));
     sigemptyset(&action.sa_mask);
@@ -85,6 +95,8 @@ int main(int argc, char* argv[])
         perror("Unable to establish SIGHUP handler");
         return 1;
     }
+
+    /*** Process command-line arguments ***/
 
     while ( ( c = getopt_long(argc, argv, options,
                               long_options, &longindex) ) != -1 ) {
@@ -115,11 +127,15 @@ int main(int argc, char* argv[])
     link_a = argv[argc-2];
     link_b = argv[argc-1];
 
+    /*** Open pseudoterminals ***/
+
     nulltty = nulltty_open(link_a, link_b);
     if ( nulltty == NULL ) {
         perror("Error opening requested PTYs");
         return 1;
     }
+
+    /*** Pseudoterminal data shuffling main loop ***/
 
     if ( nulltty_proxy(nulltty, &exit_flag) < 0 ) {
         perror("Proxying failed");
