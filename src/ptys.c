@@ -211,23 +211,31 @@ static int proxy_shuffle_data(nulltty_pty_t *pty_dst, nulltty_pty_t *pty_src,
 {
     int n;
 
-    if ( FD_ISSET(pty_dst->fd, wfds) ) {
-        n = write(pty_dst->fd, pty_src->read_buf, pty_src->read_n);
-        if ( n < 0 )
-            return -1;
-
-        if ( n > 0 ) {
-            memmove(pty_src->read_buf, pty_src->read_buf + n, pty_src->read_n - n);
-            pty_src->read_n -= n;
-        }
-    }
-
     if ( FD_ISSET(pty_src->fd, rfds) ) {
         n = read(pty_src->fd, pty_src->read_buf, READ_BUF_SZ - pty_src->read_n);
         if ( n < 0 )
             return -1;
 
+#ifdef DEBUG
+        printf("Read from %s: %d bytes\n", pty_src->link, n);
+#endif
+
         pty_src->read_n += n;
+    }
+
+    if ( FD_ISSET(pty_dst->fd, wfds) ) {
+        n = write(pty_dst->fd, pty_src->read_buf, pty_src->read_n);
+        if ( n < 0 )
+            return -1;
+
+#ifdef DEBUG
+        printf("Write to %s: %d bytes\n", pty_dst->link, n);
+#endif
+
+        if ( n > 0 ) {
+            memmove(pty_src->read_buf, pty_src->read_buf + n, pty_src->read_n - n);
+            pty_src->read_n -= n;
+        }
     }
 
     assert(pty_src->read_n >= 0);
@@ -253,11 +261,9 @@ int nulltty_proxy(nulltty_t *nulltty, volatile sig_atomic_t *exit_flag)
             saved_errno = errno;
 
 #ifdef DEBUG
-
             printf("Select returned with errno: (%d) %s\n", saved_errno,
                    strerror(saved_errno));
-
-#endif /* DEBUG */
+#endif
 
             switch ( saved_errno ) {
             case EINTR:
