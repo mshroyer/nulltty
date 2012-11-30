@@ -38,15 +38,19 @@ struct nulltty {
 #ifdef DEBUG
 
 static unsigned long nsyscalls = 0;
+static unsigned long nreads = 0;
+static unsigned long nwrites = 0;
 static unsigned long nselects = 0;
 
 static inline ssize_t debug_read(int fd, void *buf, size_t count) {
     nsyscalls++;
+    nreads++;
     return read(fd, buf, count);
 }
 
 static inline ssize_t debug_write(int fd, const void *buf, size_t count) {
     nsyscalls++;
+    nwrites++;
     return write(fd, buf, count);
 }
 
@@ -343,6 +347,24 @@ int nulltty_proxy(nulltty_t nulltty, volatile sig_atomic_t *exit_flag)
                nulltty->b.read_n, nulltty->b.read_total, nulltty->b.write_total);
 #endif
     }
+
+#ifdef DEBUG
+    printf("\n\n"
+           "========================================\n"
+           "Totals\n"
+           "========================================\n"
+           "select()s:                  %lu\n"
+           "read()s:                    %lu\n"
+           "write()s:                   %lu\n"
+           "All tracked syscalls:       %lu\n"
+           "Bytes read from PTY A:      %zu\n"
+           "Bytes written to PTY A:     %zu\n"
+           "Bytes read from PTY B:      %zu\n"
+           "Bytes written to PTY B:     %zu\n",
+           nselects, nreads, nwrites, nsyscalls,
+           nulltty->a.read_total, nulltty->a.write_total,
+           nulltty->b.read_total, nulltty->b.write_total);
+#endif
 
     return 0;
 }
