@@ -8,6 +8,7 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
+#include <termios.h>
 #include <unistd.h>
 
 #include "ptys.h"
@@ -114,6 +115,7 @@ static int platform_closept(int fd)
 static int openpty(struct nulltty_pty *pty, const char *link)
 {
     int link_len;
+    struct termios t = { 0 };
 
     pty->fd = platform_openpt();
     if ( pty->fd < 0 )
@@ -130,7 +132,14 @@ static int openpty(struct nulltty_pty *pty, const char *link)
     if ( pty->slave_fd < 0 )
         goto error_open_slave;
 
-    /* TODO cfmakeraw() etc. on the slave tty file descriptor */
+    /*
+     * Put the slave pty fd into raw mode.
+     */
+    if ( tcgetattr(pty->slave_fd, &t) == -1 )
+        goto error_termios;
+    cfmakeraw(&t);
+    if ( tcsetattr(pty->slave_fd, TCSAFLUSH, &t) == -1 )
+        goto error_termios;
 
     link_len = strnlen(link, PATH_MAX);
     if ( link[link_len] != '\0' ) {
@@ -158,6 +167,7 @@ static int openpty(struct nulltty_pty *pty, const char *link)
     free(pty->read_buf);
  error_read_buf:
     free(pty->link);
+ error_termios:
  error_link_name:
     close(pty->slave_fd);
  error_open_slave:
