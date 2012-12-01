@@ -1,3 +1,7 @@
 ACLOCAL_AMFLAGS = -I m4
 
-SUBDIRS = lib src
+SUBDIRS = src
+
+if NEED_LIBCOMPAT
+SUBDIRS += lib
+endif

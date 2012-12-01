@@ -48,9 +48,11 @@ AC_CHECK_FUNC([strlcpy], [],
     [AC_CHECK_LIB([bsd], [strlcpy], [],
         [AC_REPLACE_FUNCS([strlcpy])])])
 
+AM_CONDITIONAL([NEED_LIBCOMPAT], [test x"$ac_cv_func_strlcpy" != xyes || test x"$ac_cv_func_strlcat" != xyes])
+
 # UNIX98 PTYs.
 AC_MSG_CHECKING(whether system supports dynamic PTYs)
-if test -d /dev/pts && ls -d /dev/ptmx >/dev/null 2>&1 ; then
+if ls -d /dev/ptmx >/dev/null 2>&1 ; then
     AC_MSG_RESULT([yes])
     AC_DEFINE([HAVE_DEV_PTMX], [1], [Define to 1 if dynamic PTYs are supported.])
 else
