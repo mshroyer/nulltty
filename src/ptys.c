@@ -191,7 +191,7 @@ static int closepty(struct nulltty_pty *pty)
     if ( close(pty->slave_fd) < 0 )
         result = -1;
 
-    if ( close(pty->fd) < 0 )
+    if ( platform_closept(pty->fd) < 0 )
         result = -1;
 
     if ( unlink(pty->link) < 0 )
