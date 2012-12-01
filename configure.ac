@@ -30,6 +30,7 @@ AC_CONFIG_HEADERS([config.h])
 AC_C_INLINE
 
 AC_PROG_RANLIB
+AM_PROG_AR
 
 # Support explicit debug compilation (with optimization disabled).
 AC_MSG_CHECKING([whether to build with debug information])
