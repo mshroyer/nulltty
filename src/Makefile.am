@@ -1,4 +1,5 @@
 bin_PROGRAMS = nulltty
+dist_man_MANS = ../man/nulltty.1
 
 nulltty_SOURCES = nulltty.c ptys.h ptys.c
 nulltty_LDADD =

@@ -1,0 +1,20 @@
+.Dd December 1, 2012
+.Os
+.Dt NULLTTY 1
+.Sh NAME
+.Nm nulltty
+.Nd Simple Unix pseudoterminal relay
+.Sh SYNOPSIS
+.Nm Ar ptyA ptyB
+.Sh DESCRIPTION
+The
+.Nm
+command creates two pseoduterminal slaves (as symlinks) at the given paths,
+and then continuously relays data between the two until terminated with
+SIGTERM or SIGINT.
+.Sh EXIT STATUS
+.Ex -std
+.Sh SEE ALSO
+.Xr socat 1
+.Sh AUTHORS
+.An "Mark Shroyer" Aq code@markshroyer.com
