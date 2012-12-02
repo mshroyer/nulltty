@@ -48,7 +48,18 @@ AC_CHECK_FUNC([strlcpy], [],
     [AC_CHECK_LIB([bsd], [strlcpy], [],
         [AC_REPLACE_FUNCS([strlcpy])])])
 
-AM_CONDITIONAL([NEED_LIBCOMPAT], [test x"$ac_cv_func_strlcpy" != xyes || test x"$ac_cv_func_strlcat" != xyes])
+if test x"$ac_cv_func_strlcat" = xyes || test x"$ac_cv_lib_bsd_strlcat" = xyes ; then
+    ac_cv_have_strlcat=yes
+else
+    ac_cv_have_strlcat=no
+fi
+if test x"$ac_cv_func_strlcpy" = xyes || test x"$ac_cv_lib_bsd_strlcpy" = xyes ; then
+    ac_cv_have_strlcpy=yes
+else
+    ac_cv_have_strlcpy=no
+fi
+
+AM_CONDITIONAL([NEED_LIBCOMPAT], [test x"$ac_cv_have_strlcpy" != xyes || test x"$ac_cv_have_strlcat" != xyes])
 
 # UNIX98 PTYs.
 AC_MSG_CHECKING(whether system supports dynamic PTYs)
