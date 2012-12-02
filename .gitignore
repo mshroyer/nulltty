@@ -9,5 +9,5 @@ configure
 Makefile
 Makefile.in
 stamp-h1
+nulltty-*
 *~
-

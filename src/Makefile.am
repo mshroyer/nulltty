@@ -1,3 +1,5 @@
+AM_CPPFLAGS = -I$(top_srcdir)
+
 bin_PROGRAMS = nulltty
 dist_man_MANS = ../man/nulltty.1
 

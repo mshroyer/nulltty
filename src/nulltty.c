@@ -70,8 +70,8 @@ int main(int argc, char* argv[])
         {"pid-file",  required_argument, NULL, 'p'},
         {"verbose",   required_argument, NULL, 'v'},
     };
-    bool daemonize = false, verbose = false;
-    char *pid_file = NULL;
+    /* bool daemonize = false; */
+    /* char *pid_file = NULL; */
     const char *link_a, *link_b;
     struct sigaction action;
 
@@ -106,15 +106,11 @@ int main(int argc, char* argv[])
             break;
 
         case 'd':
-            daemonize = true;
+            /* daemonize = true; */
             break;
 
         case 'p':
-            pid_file = optarg;
-            break;
-
-        case 'v':
-            verbose = true;
+            /* pid_file = optarg; */
             break;
         }
     }
