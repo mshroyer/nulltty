@@ -77,11 +77,18 @@ static inline ssize_t debug_select(int nfds, fd_set *readfds, fd_set *writefds,
 
 static int platform_openpt()
 {
-    int fd;
+    int fd, flags;
 
-    fd = posix_openpt(O_RDWR | O_NOCTTY | O_NONBLOCK);
+    fd = posix_openpt(O_RDWR | O_NOCTTY);
     if ( fd < 0 )
         goto error;
+
+    flags = fcntl(fd, F_GETFL);
+    if ( flags < 0 )
+        goto error_opened;
+
+    if ( fcntl(fd, F_SETFL, flags | O_NONBLOCK) < 0 )
+        goto error_opened;
 
     if ( grantpt(fd) < 0 )
         goto error_opened;
