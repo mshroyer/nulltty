@@ -77,18 +77,22 @@ static inline ssize_t debug_select(int nfds, fd_set *readfds, fd_set *writefds,
 
 static int platform_openpt()
 {
-    int fd, flags;
+    int fd;
 
+    /*
+     * We don't specify the O_NONBLOCK flag here, because it is a
+     * nonstandard flag to the posix_openpt() system call and results in an
+     * error on FreeBSD 9.0. And we do not set O_NONBLOCK with fcntl()
+     * after the fact because this results in an error, with errno = ENOTTY
+     * on OS X 10.8.
+     *
+     * So instead of opening our PTY masters in non-blocking mode, we rely
+     * on the behavior of the main select loop that we never attempt to
+     * read from a master unless we can do so without blocking.
+     */
     fd = posix_openpt(O_RDWR | O_NOCTTY);
     if ( fd < 0 )
         goto error;
-
-    flags = fcntl(fd, F_GETFL);
-    if ( flags < 0 )
-        goto error_opened;
-
-    if ( fcntl(fd, F_SETFL, flags | O_NONBLOCK) < 0 )
-        goto error_opened;
 
     if ( grantpt(fd) < 0 )
         goto error_opened;
