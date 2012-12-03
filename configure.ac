@@ -78,10 +78,10 @@ AX_CHECK_CFLAGS([-pedantic])
 
 if test x"$debugit" = x"yes"; then
     AC_DEFINE([DEBUG], [], [Debug Mode])
-    CFLAGS+=" -g3 -O0"
+    CFLAGS="${CFLAGS} -g3 -O0"
 else
     AC_DEFINE([NDEBUG], [], [No-debug Mode])
-    CFLAGS+=" -O2"
+    CFLAGS="${CFLAGS} -O2"
 fi
 
 CFLAGS=$(echo "$CFLAGS" | sed 's/^ *//')
