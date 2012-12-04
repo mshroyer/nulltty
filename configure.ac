@@ -88,7 +88,8 @@ CFLAGS=$(echo "$CFLAGS" | sed 's/^ *//')
 
 AC_CONFIG_FILES([Makefile
                  lib/Makefile
-                 src/Makefile])
+                 src/Makefile
+                 test/Makefile])
 AC_OUTPUT
 
 printf "\n"

@@ -8,5 +8,5 @@ if NEED_LIBCOMPAT
 SUBDIRS += lib
 endif
 
-SUBDIRS += src
+SUBDIRS += src test
 

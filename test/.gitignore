@@ -1,0 +1,3 @@
+.deps
+*.o
+check_relay
