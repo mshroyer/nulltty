@@ -7,13 +7,16 @@
 
 #include "nulltty_child.h"
 
+/** Keep GCC 4.6's -Wunused-result happy */
+#define IGNORE_RESULT(x) do { (void) sizeof(x); } while ( 0 )
+
 static void sigchld_handler(int signum)
 {
     const char msg[] = "nulltty child exited unexpectedly, terminating\n";
     int stat_loc;
 
     wait(&stat_loc);
-    write(2, msg, sizeof(msg)-1);
+    IGNORE_RESULT(write(2, msg, sizeof(msg)-1));
     _exit(1);
 }
 
