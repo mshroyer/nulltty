@@ -23,6 +23,8 @@ CFLAGS="$CFLAGS"
 
 AM_INIT_AUTOMAKE([foreign -Wall -Werror])
 
+AC_GNU_SOURCE
+
 AC_PROG_CC_C99
 AM_PROG_CC_C_O
 

@@ -12,8 +12,6 @@
 #include "ptys.h"
 
 
-/*** SIGNAL HANDLERS **********************************************************/
-
 static volatile sig_atomic_t exit_flag = 0;
 
 static void sighup_handler(int signum)
@@ -25,8 +23,6 @@ static void sigterm_handler(int signum)
     exit_flag = 1;
 }
 
-
-/*** HELPER FUNCTIONS *********************************************************/
 
 static void print_usage(int retval)
 {
@@ -56,8 +52,27 @@ static void print_usage(int retval)
     exit(retval);
 }
 
+static int write_pid(const char *pid_path)
+{
+    FILE *pid_file;
 
-/*** MAIN PROGRAM *************************************************************/
+    if ( ( pid_file = fopen(pid_path, "w") ) == NULL )
+        goto error;
+
+    if ( fprintf(pid_file, "%d\n", getpid()) < 1 )
+        goto error_fprintf;
+
+    if ( fclose(pid_file) != 0 )
+        goto error;
+
+    return 0;
+
+ error_fprintf:
+    fclose(pid_file);
+ error:
+    return -1;
+}
+
 
 int main(int argc, char* argv[])
 {
@@ -70,10 +85,11 @@ int main(int argc, char* argv[])
         {"pid-file",  required_argument, NULL, 'p'},
         {"verbose",   required_argument, NULL, 'v'},
     };
-    /* bool daemonize = false; */
-    /* char *pid_file = NULL; */
+    bool daemonize = false;
+    char *pid_path = NULL;
     const char *link_a, *link_b;
     struct sigaction action;
+    int status = 0;
 
     /*** Establish signal handlers ***/
 
@@ -106,11 +122,11 @@ int main(int argc, char* argv[])
             break;
 
         case 'd':
-            /* daemonize = true; */
+            daemonize = true;
             break;
 
         case 'p':
-            /* pid_file = optarg; */
+            pid_path = optarg;
             break;
         }
     }
@@ -122,6 +138,24 @@ int main(int argc, char* argv[])
 
     link_a = argv[argc-2];
     link_b = argv[argc-1];
+
+    /*** Daemonization ***/
+
+    if ( daemonize ) {
+        if ( daemon(0, 0) != 0 ) {
+            perror("Error daemonizing");
+            status = 1;
+            goto end;
+        }
+    }
+
+    if ( pid_path != NULL ) {
+        if ( write_pid(pid_path) < 0 ) {
+            perror("Error writing pid file");
+            status = 1;
+            goto end;
+        }
+    }
 
     /*** Open pseudoterminals ***/
 
@@ -135,10 +169,11 @@ int main(int argc, char* argv[])
 
     if ( nulltty_proxy(nulltty, &exit_flag) < 0 ) {
         perror("Proxying failed");
-        nulltty_close(nulltty);
-        return 2;
+        status = 2;
     }
 
+ end:
     nulltty_close(nulltty);
-    return 0;
+    unlink(pid_path);
+    return status;
 }

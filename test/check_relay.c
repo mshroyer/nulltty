@@ -165,6 +165,11 @@ int check_relay()
 
     /* Shuffle data back through the slave PTYs */
 
+    /*
+     * TODO time out and return an error code if this just hangs
+     * indefinitely
+     */
+
     nfds = MAX(dir_a.fd_out, dir_b.fd_out) + 1;
     while ( ! ( shuffle_complete(&dir_a) && shuffle_complete(&dir_b) ) ) {
         FD_ZERO(&rfds);

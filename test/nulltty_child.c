@@ -41,6 +41,9 @@ int nulltty_child(const char *pty_a, const char *pty_b)
          * the new child process has had a chance to setup its
          * pseudoterminals and symlinks. This can, of course, fail -- but
          * it should be fine for our testing purposes. Probably.
+         *
+         * TODO implement this instead with a signal from nulltty to its
+         * parent process, specified by an optional command line argument
          */
         sleep(3);
         return pid;
