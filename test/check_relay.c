@@ -12,6 +12,21 @@
 #define TTY_A_PATH "nullttyA"
 #define TTY_B_PATH "nullttyB"
 
+#define MAX(a, b) ((a)>(b)) ? (a) : (b)
+
+#define log_error(fmt) printf("Error " fmt "\n")
+#define log_error_a(fmt, ...) printf("Error " fmt "\n", __VA_ARGS__)
+
+struct relay_direction {
+    int fd_out;
+    int fd_in;
+    const uint8_t *msg;
+    size_t msg_sz;
+    uint8_t *buf;
+    size_t n_out;
+    size_t n_in;
+};
+
 static int open_pty_slave(const char *path)
 {
     struct termios t = { 0 };
@@ -30,115 +45,181 @@ static int open_pty_slave(const char *path)
     return fd;
 }
 
-#define MAX(a, b) ((a)>(b)) ? (a) : (b)
+static int open_direction(struct relay_direction *dir,
+                          const uint8_t *msg, size_t msg_sz,
+                          const char *pty_path)
+{
+    dir->msg    = msg;
+    dir->msg_sz = msg_sz;
+    dir->n_in   = 0;
+    dir->n_out  = 0;
+    dir->fd_in  = -1;
 
-int main(int argc, char *argv[])
+    if ( ( dir->fd_out = open_pty_slave(pty_path) ) < 0 ) {
+        log_error_a("opening pty slave at path %s", pty_path);
+        goto error;
+    }
+
+    if ( ( dir->buf = malloc(msg_sz * sizeof(uint8_t)) ) == NULL ) {
+        log_error("allocating receive buffer");
+        goto error_malloc;
+    }
+
+    return 0;
+
+ error_malloc:
+    close(dir->fd_out);
+ error:
+    return -1;
+}
+
+static int close_direction(struct relay_direction *dir)
+{
+    int result = 0;
+
+    if ( memcmp(dir->buf, dir->msg, dir->msg_sz) != 0 ) {
+        log_error("checking received data against original");
+        result = -1;
+    }
+
+    if ( close(dir->fd_out) < 0 ) {
+        log_error("closing slave pty");
+        result = -1;
+    }
+
+    free(dir->buf);
+    dir->buf = NULL;
+
+    return result;
+}
+
+static void prepare_fd_sets(fd_set *rfds, fd_set *wfds,
+                            const struct relay_direction *dir)
+{
+    if ( dir->n_out < dir->msg_sz )
+        FD_SET(dir->fd_out, wfds);
+
+    if ( dir->n_in < dir->msg_sz )
+        FD_SET(dir->fd_in, rfds);
+}
+
+static int shuffle_data(fd_set *rfds, fd_set *wfds,
+                        struct relay_direction *dir)
+{
+    int n;
+
+    if ( FD_ISSET(dir->fd_out, wfds) ) {
+        n = write(dir->fd_out, dir->msg, dir->msg_sz - dir->n_out);
+        if ( n < 0 ) {
+            log_error_a("writing %zd bytes to slave pty", dir->msg_sz - dir->n_out);
+            return -1;
+        }
+
+        dir->n_out += n;
+    }
+
+    if ( FD_ISSET(dir->fd_in, rfds) ) {
+        n = read(dir->fd_in, dir->buf + dir->n_in, dir->msg_sz - dir->n_in);
+        if ( n < 0 ) {
+            log_error_a("reading %zd bytes from slave pty", dir->msg_sz - dir->n_in);
+            return -1;
+        }
+
+        dir->n_in += n;
+    }
+
+    return 0;
+}
+
+static inline int shuffle_complete(const struct relay_direction *dir)
+{
+    return ( dir->n_out == dir->msg_sz && dir->n_in == dir->msg_sz );
+}
+
+int check_relay()
 {
     const uint8_t ma[] = { 0x01, 0x02, 0x03, 0x04, 0x05 };
-    size_t ma_sz = sizeof(ma);
     const uint8_t mb[] = { 0xff, 0xee, 0xdd, 0xcc, 0xbb, 0xaa };
-    size_t mb_sz = sizeof(mb);
-    uint8_t *ra, *rb;
-    size_t oa = 0, ob = 0, ia = 0, ib = 0;
-    int pid, status;
-    int fd_a, fd_b;
+    struct relay_direction dir_a, dir_b;
+    int pid, nfds, status;
     fd_set rfds, wfds;
-    int nfds, n;
-
-    printf("Checking pty creation...\n");
 
     /* Launch nulltty */
 
     pid = nulltty_child(TTY_A_PATH, TTY_B_PATH);
-    if ( pid < 0 )
-        return 1;
+    if ( pid < 0 ) {
+        log_error("forking nulltty child process");
+        goto error;
+    }
 
     /* Open PTY slaves */
 
-    fd_a = open_pty_slave(TTY_A_PATH);
-    if ( fd_a < 0 )
-        return 1;
+    if ( open_direction(&dir_a, ma, sizeof(ma), TTY_A_PATH) < 0 )
+        goto error_nulltty;
 
-    fd_b = open_pty_slave(TTY_B_PATH);
-    if ( fd_b < 0 )
-        return 1;
+    if ( open_direction(&dir_b, mb, sizeof(mb), TTY_B_PATH) < 0 )
+        goto error_open_a;
 
-    ra = malloc(ma_sz);
-    if ( ra == NULL )
-        return 1;
+    dir_a.fd_in = dir_b.fd_out;
+    dir_b.fd_in = dir_a.fd_out;
 
-    rb = malloc(mb_sz);
-    if ( rb == NULL )
-        return 1;
+    /* Shuffle data back through the slave PTYs */
 
-    nfds = MAX(fd_a, fd_b) + 1;
-    while ( oa < ma_sz || ia < ma_sz || ob < mb_sz || ib < mb_sz ) {
+    nfds = MAX(dir_a.fd_out, dir_b.fd_out) + 1;
+    while ( ! ( shuffle_complete(&dir_a) && shuffle_complete(&dir_b) ) ) {
         FD_ZERO(&rfds);
         FD_ZERO(&wfds);
 
-        if ( oa < ma_sz )
-            FD_SET(fd_a, &wfds);
-        if ( ob < mb_sz )
-            FD_SET(fd_b, &wfds);
-
-        if ( ia < ma_sz )
-            FD_SET(fd_b, &rfds);
-        if ( ib < mb_sz )
-            FD_SET(fd_a, &rfds);
+        prepare_fd_sets(&rfds, &wfds, &dir_a);
+        prepare_fd_sets(&rfds, &wfds, &dir_b);
 
         if ( select(nfds, &rfds, &wfds, NULL, NULL) < 0 )
-            return 1;
+            goto error_open_b;
 
-        if ( FD_ISSET(fd_a, &wfds) ) {
-            n = write(fd_a, ma, ma_sz - oa);
-            if ( n < 0 )
-                return 1;
+        if ( shuffle_data(&rfds, &wfds, &dir_a) < 0 )
+            goto error_open_b;
 
-            oa += n;
-        }
-        if ( FD_ISSET(fd_b, &wfds) ) {
-            n = write(fd_b, mb, mb_sz - ob);
-            if ( n < 0 )
-                return 1;
-
-            ob += n;
-        }
-
-        if ( FD_ISSET(fd_a, &rfds) ) {
-            n = read(fd_a, rb + ib, mb_sz - ib);
-            if ( n < 0 )
-                return 1;
-
-            ib += n;
-        }
-        if ( FD_ISSET(fd_b, &rfds) ) {
-            read(fd_b, ra + ia, ma_sz - ia);
-            if ( n < 0 )
-                return 1;
-
-            ia += n;
-        }
+        if ( shuffle_data(&rfds, &wfds, &dir_b) < 0 )
+            goto error_open_b;
     }
 
-    close(fd_a);
-    close(fd_b);
+    /* Close slaves and check data */
 
-    if ( memcmp(ma, ra, ma_sz) != 0 )
-        return 1;
+    if ( close_direction(&dir_b) < 0 )
+        goto error_open_a;
 
-    if ( memcmp(mb, rb, mb_sz) != 0 )
-        return 1;
-
-    free(ra);
-    free(rb);
+    if ( close_direction(&dir_a) < 0 )
+        goto error_nulltty;
 
     /* Kill nulltty and get exit status */
 
     status = nulltty_kill(pid);
-    if ( status >= 0 )
+    if ( status >= 0 ) {
         printf("nulltty exited with status: %d\n", status);
-    if ( status != 0 )
+        return 0;
+    } else {
         return 1;
+    }
+
+ error_open_b:
+    close_direction(&dir_b);
+ error_open_a:
+    close_direction(&dir_a);
+ error_nulltty:
+    nulltty_kill(pid);
+ error:
+    return -1;
+}
+
+int main(int argc, char *argv[])
+{
+    int result;
+
+    printf("Checking pty creation...\n");
+    result = check_relay();
+
+    if ( result < 0 )
+        return -result;
 
     return 0;
 }
