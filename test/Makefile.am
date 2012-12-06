@@ -7,7 +7,7 @@ endif
 
 check_PROGRAMS = check_relay
 
-check_relay_SOURCES = check_relay.c nulltty_child.c
+check_relay_SOURCES = check_relay.c nulltty_child.h nulltty_child.c
 check_relay_LDADD = $(CHECK_LDADD)
 
 check:
