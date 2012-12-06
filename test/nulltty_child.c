@@ -1,3 +1,5 @@
+#include <stubs.h>
+
 #include <signal.h>
 #include <string.h>
 #include <sys/wait.h>
