@@ -162,7 +162,8 @@ int main(int argc, char* argv[])
     nulltty = nulltty_open(link_a, link_b);
     if ( nulltty == NULL ) {
         perror("Error opening requested PTYs");
-        return 1;
+        status = 1;
+        goto end_pid;
     }
 
     /*** Pseudoterminal data shuffling main loop ***/
@@ -170,10 +171,13 @@ int main(int argc, char* argv[])
     if ( nulltty_proxy(nulltty, &exit_flag) < 0 ) {
         perror("Proxying failed");
         status = 2;
+        goto end_nulltty;
     }
 
- end:
+ end_nulltty:
     nulltty_close(nulltty);
+ end_pid:
     unlink(pid_path);
+ end:
     return status;
 }
