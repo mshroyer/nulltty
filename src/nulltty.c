@@ -14,10 +14,6 @@
 
 static volatile sig_atomic_t exit_flag = 0;
 
-static void sighup_handler(int signum)
-{
-}
-
 static void sigterm_handler(int signum)
 {
     exit_flag = 1;
@@ -105,8 +101,6 @@ int main(int argc, char* argv[])
         perror("Unable to establish SIGTERM handler");
         return 1;
     }
-
-    action.sa_handler = sighup_handler;
     if ( sigaction(SIGHUP, &action, NULL) < 0 ) {
         perror("Unable to establish SIGHUP handler");
         return 1;
