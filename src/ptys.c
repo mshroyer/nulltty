@@ -335,32 +335,46 @@ int nulltty_proxy(nulltty_t nulltty, volatile sig_atomic_t *exit_flag)
 {
     int nfds = MAX(nulltty->a.fd, nulltty->b.fd) + 1;
     fd_set rfds, wfds;
-    int saved_errno;
+    sigset_t block_set, prev_set;
+    int result = 0;
 
-    while ( *exit_flag == 0 ) {
+    sigemptyset(&block_set);
+    sigaddset(&block_set, SIGINT);
+    sigaddset(&block_set, SIGTERM);
+    sigaddset(&block_set, SIGHUP);
+
+    while ( true ) {
         FD_ZERO(&rfds);
         FD_ZERO(&wfds);
 
         proxy_set_fds(&nulltty->a, &nulltty->b, &rfds, &wfds);
         proxy_set_fds(&nulltty->b, &nulltty->a, &rfds, &wfds);
 
-        /* TODO eliminate race condition with pselect() */
-        if ( select(nfds, &rfds, &wfds, NULL, NULL) < 0 ) {
-            saved_errno = errno;
+        if ( sigprocmask(SIG_BLOCK, &block_set, &prev_set) < 0 ) {
+            result = -1;
+            goto end;
+        }
 
-            switch ( saved_errno ) {
+        if ( *exit_flag != 0 )
+            goto end_masked;
+
+        if ( pselect(nfds, &rfds, &wfds, NULL, NULL, &prev_set) < 0 ) {
+            switch ( errno ) {
             case EINTR:
+                sigprocmask(SIG_SETMASK, &prev_set, NULL);
                 continue;
 
             default:
-                return -1;
+                result = -1;
+                goto end_masked;
             }
         }
 
-        if ( proxy_shuffle_data(&nulltty->a, &nulltty->b, &rfds, &wfds) < 0 )
-            return -1;
-        if ( proxy_shuffle_data(&nulltty->b, &nulltty->a, &rfds, &wfds) < 0 )
-            return -1;
+        if ( proxy_shuffle_data(&nulltty->a, &nulltty->b, &rfds, &wfds) < 0
+             || proxy_shuffle_data(&nulltty->b, &nulltty->a, &rfds, &wfds) < 0 ) {
+            result = -1;
+            goto end;
+        }
 
 #ifdef DEBUG
         printf("%lu\t%lu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\n",
@@ -369,6 +383,10 @@ int nulltty_proxy(nulltty_t nulltty, volatile sig_atomic_t *exit_flag)
                nulltty->b.read_n, nulltty->b.read_total, nulltty->b.write_total);
 #endif
     }
+
+ end_masked:
+    sigprocmask(SIG_SETMASK, &prev_set, NULL);
+ end:
 
 #ifdef DEBUG
     printf("\n\n"
@@ -388,5 +406,5 @@ int nulltty_proxy(nulltty_t nulltty, volatile sig_atomic_t *exit_flag)
            nulltty->b.read_total, nulltty->b.write_total);
 #endif
 
-    return 0;
+    return result;
 }
