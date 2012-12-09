@@ -56,17 +56,18 @@ static inline ssize_t debug_write(int fd, const void *buf, size_t count) {
     return write(fd, buf, count);
 }
 
-static inline ssize_t debug_select(int nfds, fd_set *readfds, fd_set *writefds,
-                                   fd_set *exceptfds, struct timeval *timeout)
+static inline ssize_t debug_pselect(int nfds, fd_set *readfds, fd_set *writefds,
+                                    fd_set *exceptfds, struct timespec *timeout,
+                                    const sigset_t *sigmask)
 {
     nsyscalls++;
     nselects++;
-    return select(nfds, readfds, writefds, exceptfds, timeout);
+    return pselect(nfds, readfds, writefds, exceptfds, timeout, sigmask);
 }
 
 #define read(...) debug_read(__VA_ARGS__)
 #define write(...) debug_write(__VA_ARGS__)
-#define select(...) debug_select(__VA_ARGS__)
+#define pselect(...) debug_pselect(__VA_ARGS__)
 
 #endif /* DEBUG */
 
