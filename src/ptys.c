@@ -263,7 +263,8 @@ static int proxy_shuffle_data(struct nulltty_pty *pty_dst,
     ssize_t n;
 
     if ( FD_ISSET(pty_src->fd, rfds) ) {
-        n = read(pty_src->fd, pty_src->read_buf, READ_BUF_SZ - pty_src->read_n);
+        n = read(pty_src->fd, pty_src->read_buf + pty_src->read_n,
+                 READ_BUF_SZ - pty_src->read_n);
         if ( n < 0 )
             return -1;
 
