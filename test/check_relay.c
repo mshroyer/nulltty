@@ -138,28 +138,45 @@ static inline int shuffle_complete(const struct relay_direction *dir)
     return ( dir->n_out == dir->msg_sz && dir->n_in == dir->msg_sz );
 }
 
+#define MESSAGE_A_SIZE 256
+#define MESSAGE_B_SIZE 1024
+
 int check_relay()
 {
-    const uint8_t ma[] = { 0x01, 0x02, 0x03, 0x04, 0x05 };
-    const uint8_t mb[] = { 0xff, 0xee, 0xdd, 0xcc, 0xbb, 0xaa };
+    uint8_t *ma, *mb;
     struct relay_direction dir_a, dir_b;
     int pid, nfds, status;
     fd_set rfds, wfds;
+    size_t i;
+
+    /* Prepare test data vectors */
+
+    if ( ( ma = malloc(MESSAGE_A_SIZE) ) == NULL )
+        goto error;
+
+    for ( i = 0; i < MESSAGE_A_SIZE; i++ )
+        ma[i] = (uint8_t)i;
+
+    if ( ( mb = malloc(MESSAGE_B_SIZE) ) == NULL )
+        goto error_ma;
+
+    for ( i = 0; i < MESSAGE_B_SIZE; i++ )
+        mb[i] = random() % 256;
 
     /* Launch nulltty */
 
     pid = nulltty_child(TTY_A_PATH, TTY_B_PATH);
     if ( pid < 0 ) {
         log_error("forking nulltty child process");
-        goto error;
+        goto error_mb;
     }
 
     /* Open PTY slaves */
 
-    if ( open_direction(&dir_a, ma, sizeof(ma), TTY_A_PATH) < 0 )
+    if ( open_direction(&dir_a, ma, MESSAGE_A_SIZE, TTY_A_PATH) < 0 )
         goto error_nulltty;
 
-    if ( open_direction(&dir_b, mb, sizeof(mb), TTY_B_PATH) < 0 )
+    if ( open_direction(&dir_b, mb, MESSAGE_B_SIZE, TTY_B_PATH) < 0 )
         goto error_open_a;
 
     dir_a.fd_in = dir_b.fd_out;
@@ -201,6 +218,8 @@ int check_relay()
     /* Kill nulltty and get exit status */
 
     status = nulltty_kill(pid);
+    free(mb);
+    free(ma);
     if ( status >= 0 ) {
         printf("nulltty exited with status: %d\n", status);
         return 0;
@@ -214,6 +233,10 @@ int check_relay()
     close_direction(&dir_a);
  error_nulltty:
     nulltty_kill(pid);
+ error_mb:
+    free(mb);
+ error_ma:
+    free(ma);
  error:
     return -1;
 }
