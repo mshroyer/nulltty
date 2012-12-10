@@ -162,8 +162,8 @@ int main(int argc, char* argv[])
 
     /*** Pseudoterminal data shuffling main loop ***/
 
-    if ( nulltty_proxy(nulltty, &exit_flag) < 0 ) {
-        perror("Proxying failed");
+    if ( nulltty_relay(nulltty, &exit_flag) < 0 ) {
+        perror("Relaying failed");
         status = 2;
         goto end_nulltty;
     }

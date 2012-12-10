@@ -217,20 +217,20 @@ static int closepty(struct nulltty_pty *pty)
 }
 
 /**
- * Prepare select() fd_sets for this iteration of the proxy
+ * Prepare select() fd_sets for this iteration of the relay
  *
  * Prepares read and write fd_sets by setting the appropriate file
  * descriptors in order for pty_dst to receive data from pty_src, depending
  * on the current state of pty_dst's receive buffer.
  *
- * This function is half-duplex with respect to the proxy.
+ * This function is half-duplex with respect to the relay.
  *
  * @param pty_dst Descriptor of receiving PTY
  * @param pty_src Descriptor of sending PTY
  * @param rfds Pointer to read fd_set
  * @param wfds Pointer to write fd_set
  */
-static void proxy_set_fds(struct nulltty_pty *pty_dst,
+static void relay_set_fds(struct nulltty_pty *pty_dst,
                           struct nulltty_pty *pty_src,
                           fd_set *rfds, fd_set *wfds)
 {
@@ -248,7 +248,7 @@ static void proxy_set_fds(struct nulltty_pty *pty_dst,
  * non-blocking writes out of, and reads into, the read buffer in order to
  * shuffle data from pty_src to pty_dst.
  *
- * This function is half-duplex with respect to the proxy.
+ * This function is half-duplex with respect to the relay.
  *
  * @param pty_dst Descriptor of receiving PTY
  * @param pty_src Descriptor of sending PTY
@@ -256,7 +256,7 @@ static void proxy_set_fds(struct nulltty_pty *pty_dst,
  * @param wfds Pointer to write fd_set
  * @return 0 on success, -1 with errno on error
  */
-static int proxy_shuffle_data(struct nulltty_pty *pty_dst,
+static int relay_shuffle_data(struct nulltty_pty *pty_dst,
                               struct nulltty_pty *pty_src,
                               fd_set *rfds, fd_set *wfds)
 {
@@ -333,7 +333,7 @@ int nulltty_close(nulltty_t nulltty)
     return result;
 }
 
-int nulltty_proxy(nulltty_t nulltty, volatile sig_atomic_t *exit_flag)
+int nulltty_relay(nulltty_t nulltty, volatile sig_atomic_t *exit_flag)
 {
     int nfds = MAX(nulltty->a.fd, nulltty->b.fd) + 1;
     fd_set rfds, wfds;
@@ -349,8 +349,8 @@ int nulltty_proxy(nulltty_t nulltty, volatile sig_atomic_t *exit_flag)
         FD_ZERO(&rfds);
         FD_ZERO(&wfds);
 
-        proxy_set_fds(&nulltty->a, &nulltty->b, &rfds, &wfds);
-        proxy_set_fds(&nulltty->b, &nulltty->a, &rfds, &wfds);
+        relay_set_fds(&nulltty->a, &nulltty->b, &rfds, &wfds);
+        relay_set_fds(&nulltty->b, &nulltty->a, &rfds, &wfds);
 
         if ( sigprocmask(SIG_BLOCK, &block_set, &prev_set) < 0 ) {
             result = -1;
@@ -377,8 +377,8 @@ int nulltty_proxy(nulltty_t nulltty, volatile sig_atomic_t *exit_flag)
             goto end;
         }
 
-        if ( proxy_shuffle_data(&nulltty->a, &nulltty->b, &rfds, &wfds) < 0
-             || proxy_shuffle_data(&nulltty->b, &nulltty->a, &rfds, &wfds) < 0 ) {
+        if ( relay_shuffle_data(&nulltty->a, &nulltty->b, &rfds, &wfds) < 0
+             || relay_shuffle_data(&nulltty->b, &nulltty->a, &rfds, &wfds) < 0 ) {
             result = -1;
             goto end;
         }

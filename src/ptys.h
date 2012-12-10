@@ -35,7 +35,7 @@ nulltty_t nulltty_open(const char *link_a, const char *link_b);
 int nulltty_close(nulltty_t nulltty);
 
 /**
- * Proxy data between the pseudoterminal pair
+ * Relay data between the pseudoterminal pair
  *
  * Implements the program's main loop behavior of ferrying data between the
  * two pseudoterminal devices.
@@ -44,6 +44,6 @@ int nulltty_close(nulltty_t nulltty);
  * @param exit_flag Flag to signal program termination
  * @return 0 on success (user request termination), -1 on error
  */
-int nulltty_proxy(nulltty_t nulltty, volatile sig_atomic_t *exit_flag);
+int nulltty_relay(nulltty_t nulltty, volatile sig_atomic_t *exit_flag);
 
 #endif /* ! defined _NULLTTY_PTYS_H_ */
