@@ -372,6 +372,11 @@ int nulltty_proxy(nulltty_t nulltty, volatile sig_atomic_t *exit_flag)
             }
         }
 
+        if ( sigprocmask(SIG_SETMASK, &prev_set, NULL) < 0 ) {
+            result = -1;
+            goto end;
+        }
+
         if ( proxy_shuffle_data(&nulltty->a, &nulltty->b, &rfds, &wfds) < 0
              || proxy_shuffle_data(&nulltty->b, &nulltty->a, &rfds, &wfds) < 0 ) {
             result = -1;
