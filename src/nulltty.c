@@ -12,13 +12,14 @@
 #include "ptys.h"
 
 
+#define SIG_NAME_MAX 128
+
 static volatile sig_atomic_t exit_flag = 0;
 
 static void sigterm_handler(int signum)
 {
     exit_flag = 1;
 }
-
 
 static void print_usage(int retval)
 {
@@ -37,8 +38,12 @@ static void print_usage(int retval)
         "\t-d, --daemonize\n"
         "\t\tDaemonize the program\n"
         "\n"
-        "\t-p, --pid-file=file\n"
+        "\t-p <file>, --pid-file=<file>\n"
         "\t\tWrite PID file\n"
+        "\n"
+        "\t-s <sig>, --signal-parent=<sig>\n"
+        "\t\tNotify nulltty's parent process with the given signal when\n"
+        "\t\tthe pseoduterminals are ready\n"
         "\n"
         "\t-h, --help\n"
         "\t\tShow this help message and exit\n"
@@ -69,23 +74,70 @@ static int write_pid(const char *pid_path)
     return -1;
 }
 
+static int upcase(char *str, size_t size)
+{
+    size_t i;
+
+    for ( i = 0; i < size && str[i] != '\0'; i++ ) {
+        if ( str[i] >= 0x61 && str[i] <= 0x7a )
+            str[i] -= 0x20;
+    }
+
+    return i;
+}
+
+static int sig_num(const char *sig_name)
+{
+    char name[SIG_NAME_MAX];
+    int result = -1;
+    char *endptr = name;
+
+    if ( strlcpy(name, sig_name, SIG_NAME_MAX) < 0 )
+        return -1;
+
+    upcase(name, SIG_NAME_MAX);
+
+    result = strtol(name, &endptr, 10);
+    if ( *endptr == '\0' && name[0] != '\0' )
+        return result;
+
+    /* wannabe lisper */
+#define CHECK_SIG(NAME) do {                                            \
+        if ( strncmp(#NAME, name, SIG_NAME_MAX) == 0 )                  \
+            return SIG ## NAME;                                         \
+    } while ( 0 )
+
+    CHECK_SIG(HUP);
+    CHECK_SIG(INT);
+    CHECK_SIG(KILL);
+    CHECK_SIG(TERM);
+#ifdef SIGINFO
+    CHECK_SIG(INFO);
+#endif
+    CHECK_SIG(USR1);
+    CHECK_SIG(USR2);
+
+    return -1;
+}
 
 int main(int argc, char* argv[])
 {
     nulltty_t nulltty;
     int longindex, c = 0;
-    const char *options = "hdp:v";
+    const char *options = "hdvp:s:";
     const struct option long_options[] = {
-        {"help",      no_argument,       NULL, 'h'},
-        {"daemonize", no_argument,       NULL, 'd'},
-        {"pid-file",  required_argument, NULL, 'p'},
-        {"verbose",   required_argument, NULL, 'v'},
+        {"help",          no_argument,       NULL, 'h'},
+        {"daemonize",     no_argument,       NULL, 'd'},
+        {"verbose",       no_argument,       NULL, 'v'},
+        {"pid-file",      required_argument, NULL, 'p'},
+        {"signal-parent", required_argument, NULL, 's'},
     };
     bool daemonize = false;
     char *pid_path = NULL;
     const char *link_a, *link_b;
     struct sigaction action;
     int status = 0;
+    int signum = -1;
 
     /*** Establish signal handlers ***/
 
@@ -121,6 +173,14 @@ int main(int argc, char* argv[])
 
         case 'p':
             pid_path = optarg;
+            break;
+
+        case 's':
+            signum = sig_num(optarg);
+            if ( signum < 0 ) {
+                fprintf(stderr, "Invalid signal name: %s", optarg);
+                exit(1);
+            }
             break;
         }
     }
@@ -158,6 +218,14 @@ int main(int argc, char* argv[])
         perror("Error opening requested PTYs");
         status = 1;
         goto end_pid;
+    }
+
+    if ( signum != -1 ) {
+        if ( kill(getppid(), signum) < 0 ) {
+            perror("Unable to signal parent");
+            status = 1;
+            goto end_nulltty;
+        }
     }
 
     /*** Pseudoterminal data shuffling main loop ***/
