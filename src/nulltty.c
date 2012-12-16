@@ -6,6 +6,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/select.h>
 #include <unistd.h>
 
@@ -101,7 +102,7 @@ static int sig_num(const char *sig_name)
     if ( *endptr == '\0' && name[0] != '\0' )
         return result;
 
-    /* wannabe lisper */
+    /* wannabe lisp */
 #define CHECK_SIG(NAME) do {                                            \
         if ( strncmp(#NAME, name, SIG_NAME_MAX) == 0 )                  \
             return SIG ## NAME;                                         \

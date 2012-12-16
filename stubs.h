@@ -12,6 +12,13 @@ extern int daemon(int, int);
 #include <string.h>
 #if HAVE_LIBBSD
 #include <bsd/string.h>
+#else
+#ifndef HAVE_STRLCPY
+size_t strlcpy(char *dst, const char *src, size_t siz);
+#endif
+#ifndef HAVE_STRLCAT
+size_t strlcat(char *dst, const char *src, size_t siz);
+#endif
 #endif
 
 #ifndef HAVE_SIGWAITINFO
