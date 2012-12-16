@@ -66,17 +66,13 @@ fi
 
 AM_CONDITIONAL([NEED_LIBCOMPAT], [test x"$ac_cv_have_strlcpy" != xyes || test x"$ac_cv_have_strlcat" != xyes])
 
-# UNIX98 PTYs.
-AC_MSG_CHECKING(whether system supports dynamic PTYs)
-if ls -d /dev/ptmx >/dev/null 2>&1 ; then
-    AC_MSG_RESULT([yes])
-    AC_DEFINE([HAVE_DEV_PTMX], [1], [Define to 1 if dynamic PTYs are supported.])
-else
-    AC_MSG_RESULT([no])
-    AC_MSG_ERROR([UNIX98 PTYs are required])
-fi
-AC_CHECK_FUNCS([grantpt])
-AC_CHECK_FUNCS([posix_openpt])
+AC_CHECK_FUNCS([posix_openpt], [],
+    [AC_CHECK_FUNCS([openpty], [],
+        [AC_CHECK_LIB([util], [openpty], [],
+            [AC_MSG_ERROR([need either posix_openpt or openpty])])])
+     AC_CHECK_HEADERS([util.h])])
+
+AC_CHECK_FUNCS([pselect])
 
 AX_CHECK_CFLAGS([-Wall -Werror])
 AX_CHECK_CFLAGS([-pedantic])
