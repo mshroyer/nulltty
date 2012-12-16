@@ -43,11 +43,7 @@ AC_ARG_ENABLE([debug],
         [debugit=no])
 AC_MSG_RESULT([$debugit])
 
-AC_CHECK_FUNC([sigwaitinfo], [],
-    [AC_CHECK_FUNC([sigwait],
-        [AC_REPLACE_FUNCS([sigwaitinfo])],
-        [AC_MSG_ERROR([need either sigwaitinfo or sigwait])])])
-AC_REPLACE_FUNCS([sigwaitinfo])
+AC_CHECK_FUNC([sigwait], [], [AC_MSG_ERROR([need sigwait])])
 AC_CHECK_FUNC([strlcat], [],
     [AC_CHECK_LIB([bsd], [strlcat], [],
         [AC_REPLACE_FUNCS([strlcat])])])
@@ -66,7 +62,7 @@ else
     ac_cv_have_strlcpy=no
 fi
 
-AM_CONDITIONAL([NEED_LIBCOMPAT], [test x"$ac_cv_have_strlcpy" != xyes || test x"$ac_cv_have_strlcat" != xyes || test x"$ac_cv_func_sigwaitinfo" != xyes])
+AM_CONDITIONAL([NEED_LIBCOMPAT], [test x"$ac_cv_have_strlcpy" != xyes || test x"$ac_cv_have_strlcat" != xyes])
 
 # UNIX98 PTYs.
 AC_MSG_CHECKING(whether system supports dynamic PTYs)

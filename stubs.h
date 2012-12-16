@@ -20,7 +20,3 @@ size_t strlcpy(char *dst, const char *src, size_t siz);
 size_t strlcat(char *dst, const char *src, size_t siz);
 #endif
 #endif
-
-#ifndef HAVE_SIGWAITINFO
-int sigwaitinfo(const sigset_t *set, siginfo_t *info);
-#endif

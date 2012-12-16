@@ -24,7 +24,7 @@ int nulltty_child(const char *pty_a, const char *pty_b)
 {
     struct sigaction action;
     sigset_t new_mask, prev_mask, wait_set;
-    int wait_result, pid;
+    int wait_result, signum, pid;
 
     memset(&action, 0, sizeof(action));
     sigemptyset(&action.sa_mask);
@@ -54,11 +54,11 @@ int nulltty_child(const char *pty_a, const char *pty_b)
         /* Wait for any of SIGUSR1 indicating nulltty ready, SIGCHLD
          * indicating that it terminated unexpectedly, or for the user to
          * kill us. */
-        wait_result = sigwaitinfo(&wait_set, NULL);
+        wait_result = sigwait(&wait_set, &signum);
         if ( sigprocmask(SIG_SETMASK, &prev_mask, NULL) < 0 )
             return -1;
 
-        if ( wait_result == SIGUSR1 )
+        if ( wait_result == 0 && signum == SIGUSR1 )
             return pid;
 
         return -1;
