@@ -43,7 +43,9 @@ AC_ARG_ENABLE([debug],
         [debugit=no])
 AC_MSG_RESULT([$debugit])
 
-AC_CHECK_FUNC([sigwait], [], [AC_MSG_ERROR([need sigwait])])
+AC_CHECK_FUNC([sigwait], [],
+    [AC_CHECK_LIB([pthread], [sigwait], [],
+        [AC_MSG_ERROR([need sigwait])])])
 AC_CHECK_FUNC([strlcat], [],
     [AC_CHECK_LIB([bsd], [strlcat], [],
         [AC_REPLACE_FUNCS([strlcat])])])
