@@ -23,7 +23,8 @@ static void sigchld_handler(int signum)
 int nulltty_child(const char *pty_a, const char *pty_b)
 {
     struct sigaction action;
-    int pid;
+    sigset_t new_mask, prev_mask, wait_set;
+    int wait_result, pid;
 
     memset(&action, 0, sizeof(action));
     sigemptyset(&action.sa_mask);
@@ -32,26 +33,35 @@ int nulltty_child(const char *pty_a, const char *pty_b)
     if ( sigaction(SIGCHLD, &action, NULL) < 0 )
         return -1;
 
+    sigemptyset(&new_mask);
+    sigaddset(&new_mask, SIGUSR1);
+    if ( sigprocmask(SIG_BLOCK, &new_mask, &prev_mask) < 0 )
+        return -1;
+
+    sigemptyset(&wait_set);
+    sigaddset(&wait_set, SIGUSR1);
+    sigaddset(&wait_set, SIGINT);
+
     switch ( pid = fork() ) {
     case -1:
         return -1;
 
     case 0:
-        execl(NULLTTY, NULLTTY, pty_a, pty_b, NULL);
+        execl(NULLTTY, NULLTTY, "-s", "USR1", pty_a, pty_b, NULL);
         return -1;
 
     default:
-        /*
-         * Make sure we *probably* won't run any more of this test until
-         * the new child process has had a chance to setup its
-         * pseudoterminals and symlinks. This can, of course, fail -- but
-         * it should be fine for our testing purposes. Probably.
-         *
-         * TODO implement this instead with a signal from nulltty to its
-         * parent process, specified by an optional command line argument
-         */
-        sleep(3);
-        return pid;
+        /* Wait for any of SIGUSR1 indicating nulltty ready, SIGCHLD
+         * indicating that it terminated unexpectedly, or for the user to
+         * kill us. */
+        wait_result = sigwaitinfo(&wait_set, NULL);
+        if ( sigprocmask(SIG_SETMASK, &prev_mask, NULL) < 0 )
+            return -1;
+
+        if ( wait_result == SIGUSR1 )
+            return pid;
+
+        return -1;
     }
 }
 

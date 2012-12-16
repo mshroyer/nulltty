@@ -13,3 +13,7 @@ extern int daemon(int, int);
 #if HAVE_LIBBSD
 #include <bsd/string.h>
 #endif
+
+#ifndef HAVE_SIGWAITINFO
+int sigwaitinfo(const sigset_t *set, siginfo_t *info);
+#endif
