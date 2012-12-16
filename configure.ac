@@ -66,7 +66,7 @@ else
     ac_cv_have_strlcpy=no
 fi
 
-AM_CONDITIONAL([NEED_LIBCOMPAT], [test x"$ac_cv_have_strlcpy" != xyes || test x"$ac_cv_have_strlcat" != xyes || test x"$ac_have_sigwaitinfo" != xyes])
+AM_CONDITIONAL([NEED_LIBCOMPAT], [test x"$ac_cv_have_strlcpy" != xyes || test x"$ac_cv_have_strlcat" != xyes || test x"$ac_cv_func_sigwaitinfo" != xyes])
 
 # UNIX98 PTYs.
 AC_MSG_CHECKING(whether system supports dynamic PTYs)
