@@ -126,10 +126,10 @@ static int endpoint_open(struct nulltty_pty *pty, const char *link)
     if ( pty->fd < 0 )
         goto error_openpt;
 
-    if ( grantpt(fd) < 0 )
+    if ( grantpt(pty->fd) < 0 )
         goto error_opened;
 
-    if ( unlockpt(fd) < 0 )
+    if ( unlockpt(pty->fd) < 0 )
         goto error_opened;
 
     /*

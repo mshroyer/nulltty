@@ -72,6 +72,7 @@ AC_CHECK_FUNCS([posix_openpt], [],
             [AC_MSG_ERROR([need either posix_openpt or openpty])])])
      AC_CHECK_HEADERS([util.h])])
 
+AC_CHECK_FUNCS([ptsname])
 AC_CHECK_FUNCS([pselect])
 
 AX_CHECK_CFLAGS([-Wall -Werror])
