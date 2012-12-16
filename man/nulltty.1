@@ -5,13 +5,39 @@
 .Nm nulltty
 .Nd Simple Unix pseudoterminal relay
 .Sh SYNOPSIS
-.Nm Ar ptyA ptyB
+.Nm
+.Op Fl vd
+.Op Fl p Ar pidfile
+.Op Fl s Ar signal
+.Ar ptyA ptyB
+.Nm
+.Fl h
 .Sh DESCRIPTION
 The
 .Nm
-command creates two pseoduterminal slaves (as symlinks) at the given paths,
-and then continuously relays data between the two until terminated with
+command creates two pseoduterminal slaves (as symlinks) at the given paths
+.Ar ptyA
+and
+.Ar ptyB
+, and then continuously relays data between the two until terminated with
 SIGTERM or SIGINT.
+.Sh OPTIONS
+.Bl -tag -width indent
+.It Fl v
+Enable verbose (debugging) output
+.It Fl d
+Daemonize the relay
+.It Fl p Ar pidfile
+Write the relay's PID to
+.Ar pidfile
+.It Fl s Ar signal
+Alert nulltty's parent process with
+.Ar signal
+when the requested PTYs are ready to be opened.
+.Ar signal
+can be specified either as a signal number, or with a signal name such as
+"INT", "INFO", "USR1", etc.
+.El
 .Sh EXIT STATUS
 .Ex -std
 .Sh SEE ALSO
