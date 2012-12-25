@@ -111,7 +111,7 @@ static int shuffle_data(fd_set *rfds, fd_set *wfds,
     int n;
 
     if ( FD_ISSET(dir->fd_out, wfds) ) {
-        n = write(dir->fd_out, dir->msg, dir->msg_sz - dir->n_out);
+        n = write(dir->fd_out, dir->msg + dir->n_out, dir->msg_sz - dir->n_out);
         if ( n < 0 ) {
             log_error_a("writing %zd bytes to slave pty", dir->msg_sz - dir->n_out);
             return -1;
