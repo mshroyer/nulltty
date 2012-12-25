@@ -138,8 +138,8 @@ static inline int shuffle_complete(const struct relay_direction *dir)
     return ( dir->n_out == dir->msg_sz && dir->n_in == dir->msg_sz );
 }
 
-#define MESSAGE_A_SIZE 256
-#define MESSAGE_B_SIZE 256
+#define MESSAGE_A_SIZE 4096
+#define MESSAGE_B_SIZE 4096
 
 int check_relay()
 {
