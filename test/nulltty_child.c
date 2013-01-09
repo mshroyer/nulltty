@@ -47,7 +47,7 @@ int nulltty_child(const char *pty_a, const char *pty_b)
         return -1;
 
     case 0:
-        execl(NULLTTY, NULLTTY, "-s", "USR1", pty_a, pty_b, NULL);
+        execl(NULLTTY, NULLTTY, "-s", "USR1", pty_a, pty_b, (char *)NULL);
         return -1;
 
     default:
