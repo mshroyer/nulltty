@@ -106,22 +106,11 @@ static inline ssize_t debug_select(int nfds, fd_set *readfds, fd_set *writefds,
  */
 static int endpoint_open(struct nulltty_pty *pty, const char *link)
 {
-    int link_len;
+    int link_len, flags;
     struct termios t = { 0 };
 
 #ifdef HAVE_POSIX_OPENPT
 
-    /*
-     * We don't specify the O_NONBLOCK flag here, because it is a
-     * nonstandard flag to the posix_openpt() system call and results in an
-     * error on FreeBSD 9.0. And we do not set O_NONBLOCK with fcntl()
-     * after the fact because this results in an error, with errno = ENOTTY
-     * on OS X 10.8.
-     *
-     * So instead of opening our PTY masters in non-blocking mode, we rely
-     * on the behavior of the main select loop that we never attempt to
-     * read from a master unless we can do so without blocking.
-     */
     pty->fd = posix_openpt(O_RDWR | O_NOCTTY);
     if ( pty->fd < 0 )
         goto error_openpt;
@@ -152,6 +141,18 @@ static int endpoint_open(struct nulltty_pty *pty, const char *link)
         goto error_openpt;
 
 #endif /* ! defined POSIX_OPENPT */
+
+    flags = fcntl(pty->fd, F_GETFL);
+    if ( flags < 0 )
+        goto error_opened;
+
+    /*
+     * O_NONBLOCK is not a defined flag to posix_openpt (and in fact
+     * FreeBSD will return an error if you attempt to specify it), so
+     * instead we set the flag with fcntl after the fact.
+     */
+    if ( fcntl(pty->fd, F_SETFL, flags | O_NONBLOCK) < 0 )
+        goto error_opened;
 
     /*
      * Put the slave pty fd into raw mode.
