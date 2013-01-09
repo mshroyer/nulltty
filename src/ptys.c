@@ -197,9 +197,7 @@ static int endpoint_open(struct nulltty_pty *pty, const char *link)
  error_termios:
  error_link_name:
     close(pty->slave_fd);
-#ifdef HAVE_POSIX_OPENPT
  error_opened:
-#endif
     close(pty->fd);
  error_openpt:
     return -1;
