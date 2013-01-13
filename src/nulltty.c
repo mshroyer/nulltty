@@ -138,8 +138,6 @@ int main(int argc, char* argv[])
     int status = 0;
     int signum = -1;
 
-    /*** Establish signal handlers ***/
-
     memset(&action, 0, sizeof(action));
     sigemptyset(&action.sa_mask);
 
@@ -156,8 +154,6 @@ int main(int argc, char* argv[])
         perror("Unable to establish SIGHUP handler");
         return 1;
     }
-
-    /*** Process command-line arguments ***/
 
     while ( ( c = getopt_long(argc, argv, options,
                               long_options, &longindex) ) != -1 ) {
@@ -192,42 +188,47 @@ int main(int argc, char* argv[])
     link_a = argv[argc-2];
     link_b = argv[argc-1];
 
-    /*** Daemonization ***/
-
-    if ( daemonize ) {
-        if ( daemon(0, 0) != 0 ) {
-            perror("Error daemonizing");
-            status = 1;
-            goto end;
-        }
-    }
+    /* If we are to daemonize, the process will have to perform its cleanup
+     * code from the root directory. Therefore we change to the root before
+     * creating the pid file and pty symlinks so that relative paths are
+     * interpreted consistently.
+     *
+     * Unfortunately this requires specifying absolute symlink paths when
+     * running daemonized, but it prevents daemons from occupying whatever
+     * working directory they happened to be started from. */
+    if ( daemonize )
+        chdir("/");
 
     if ( pid_path != NULL ) {
         if ( write_pid(pid_path) < 0 ) {
             perror("Error writing pid file");
             status = 1;
-            goto end;
+            goto end_nulltty;
         }
     }
-
-    /*** Open pseudoterminals ***/
 
     nulltty = nulltty_open(link_a, link_b);
     if ( nulltty == NULL ) {
         perror("Error opening requested PTYs");
         status = 1;
-        goto end_pid;
+        goto end;
+    }
+
+    if ( daemonize ) {
+        if ( daemon(0, 0) != 0 ) {
+            perror("Error daemonizing");
+            status = 1;
+            goto end_nulltty;
+        }
     }
 
     if ( signum != -1 ) {
         if ( kill(getppid(), signum) < 0 ) {
             perror("Unable to signal parent");
             status = 1;
-            goto end_nulltty;
+            goto end_pid;
         }
     }
-
-    /*** Pseudoterminal data shuffling main loop ***/
 
     if ( nulltty_relay(nulltty, &exit_flag) < 0 ) {
         perror("Relaying failed");
@@ -235,10 +236,10 @@ int main(int argc, char* argv[])
         goto end_nulltty;
     }
 
- end_nulltty:
-    nulltty_close(nulltty);
  end_pid:
     unlink(pid_path);
+ end_nulltty:
+    nulltty_close(nulltty);
  end:
     return status;
 }
