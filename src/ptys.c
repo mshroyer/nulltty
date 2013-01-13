@@ -26,15 +26,14 @@ struct nulltty_pty {
     char *link;
     uint8_t *read_buf;
     size_t read_n;
-#ifdef DEBUG
     size_t read_total;
     size_t write_total;
-#endif
 };
 
 struct nulltty {
     struct nulltty_pty a;
     struct nulltty_pty b;
+    sig_atomic_t info_req;
 };
 
 
@@ -283,10 +282,7 @@ static int relay_shuffle_data(struct nulltty_pty *pty_dst,
             return -1;
 
         pty_src->read_n += n;
-
-#ifdef DEBUG
         pty_src->read_total += n;
-#endif
     }
 
     if ( FD_ISSET(pty_dst->fd, wfds) ) {
@@ -299,9 +295,7 @@ static int relay_shuffle_data(struct nulltty_pty *pty_dst,
             pty_src->read_n -= n;
         }
 
-#ifdef DEBUG
         pty_dst->write_total += n;
-#endif
     }
 
     assert(pty_src->read_n >= 0);
@@ -309,6 +303,11 @@ static int relay_shuffle_data(struct nulltty_pty *pty_dst,
     return 0;
 }
 
+static void relay_printinfo(nulltty_t nulltty)
+{
+    fprintf(stderr, "bytes written to PTY A: %zd  PTY B: %zd\n",
+            nulltty->a.read_total, nulltty->b.read_total);
+}
 
 /*** INTERFACE FUNCTIONS ******************************************************/
 
@@ -347,6 +346,12 @@ int nulltty_close(nulltty_t nulltty)
     return result;
 }
 
+void nulltty_printinfo(nulltty_t nulltty)
+{
+    if ( nulltty )
+        nulltty->info_req = true;
+}
+
 int nulltty_relay(nulltty_t nulltty, volatile sig_atomic_t *exit_flag)
 {
     int nfds = MAX(nulltty->a.fd, nulltty->b.fd) + 1;
@@ -373,6 +378,11 @@ int nulltty_relay(nulltty_t nulltty, volatile sig_atomic_t *exit_flag)
 
         if ( *exit_flag != 0 )
             goto end_masked;
+
+        if ( nulltty->info_req ) {
+            relay_printinfo(nulltty);
+            nulltty->info_req = false;
+        }
 
 #ifdef HAVE_PSELECT
 

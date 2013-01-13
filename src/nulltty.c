@@ -16,10 +16,16 @@
 #define SIG_NAME_MAX 128
 
 static volatile sig_atomic_t exit_flag = 0;
+nulltty_t nulltty = NULL;
 
 static void sigterm_handler(int signum)
 {
     exit_flag = 1;
+}
+
+static void siginfo_handler(int signum)
+{
+    nulltty_printinfo(nulltty);
 }
 
 static void print_usage(int retval)
@@ -121,7 +127,6 @@ static int sig_num(const char *sig_name)
 
 int main(int argc, char* argv[])
 {
-    nulltty_t nulltty;
     int longindex, c = 0;
     const char *options = "hdvp:s:";
     const struct option long_options[] = {
@@ -155,6 +160,18 @@ int main(int argc, char* argv[])
         perror("Unable to establish SIGHUP handler");
         return 1;
     }
+
+    action.sa_handler = siginfo_handler;
+    if ( sigaction(SIGUSR1, &action, NULL) < 0 ) {
+        perror("Unable to establish SIGUSR1 handler");
+        return 1;
+    }
+#ifdef SIGINFO
+    if ( sigaction(SIGINFO, &action, NULL) < 0 ) {
+        perror("Unable to establish SIGINFO handler");
+        return 1;
+    }
+#endif
 
     while ( ( c = getopt_long(argc, argv, options,
                               long_options, &longindex) ) != -1 ) {

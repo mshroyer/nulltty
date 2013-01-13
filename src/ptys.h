@@ -46,4 +46,11 @@ int nulltty_close(nulltty_t nulltty);
  */
 int nulltty_relay(nulltty_t nulltty, volatile sig_atomic_t *exit_flag);
 
+/**
+ * Cause the nulltty relay to print a status report
+ *
+ * @paran nulltty Pointer to structure returned by openptys()
+ */
+void nulltty_printinfo(nulltty_t nulltty);
+
 #endif /* ! defined _NULLTTY_PTYS_H_ */
