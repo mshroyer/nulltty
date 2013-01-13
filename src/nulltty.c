@@ -39,9 +39,6 @@ static void print_usage(int retval)
         "act like two ends of a null modem cable, except implemented in software.\n"
         "\n"
         "Options:\n"
-        "\t-v, --verbose\n"
-        "\t\tEnable verbose (debugging) output\n"
-        "\n"
         "\t-d, --daemonize\n"
         "\t\tDaemonize the program\n"
         "\n"
@@ -132,7 +129,6 @@ int main(int argc, char* argv[])
     const struct option long_options[] = {
         {"help",          no_argument,       NULL, 'h'},
         {"daemonize",     no_argument,       NULL, 'd'},
-        {"verbose",       no_argument,       NULL, 'v'},
         {"pid-file",      required_argument, NULL, 'p'},
         {"signal-parent", required_argument, NULL, 's'},
     };

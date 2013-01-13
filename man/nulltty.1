@@ -6,7 +6,7 @@
 .Nd Simple Unix pseudoterminal relay
 .Sh SYNOPSIS
 .Nm
-.Op Fl vd
+.Op Fl d
 .Op Fl p Ar pidfile
 .Op Fl s Ar signal
 .Ar ptyA ptyB
@@ -23,8 +23,6 @@ and
 SIGTERM or SIGINT.
 .Sh OPTIONS
 .Bl -tag -width indent
-.It Fl v
-Enable verbose (debugging) output
 .It Fl d
 Daemonize the relay
 .It Fl p Ar pidfile
