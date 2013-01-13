@@ -132,6 +132,7 @@ int main(int argc, char* argv[])
         {"signal-parent", required_argument, NULL, 's'},
     };
     bool daemonize = false;
+    char *startup_wd = NULL;
     char *pid_path = NULL;
     const char *link_a, *link_b;
     struct sigaction action;
@@ -188,22 +189,15 @@ int main(int argc, char* argv[])
     link_a = argv[argc-2];
     link_b = argv[argc-1];
 
-    /* If we are to daemonize, the process will have to perform its cleanup
-     * code from the root directory. Therefore we change to the root before
-     * creating the pid file and pty symlinks so that relative paths are
-     * interpreted consistently.
-     *
-     * Unfortunately this requires specifying absolute symlink paths when
-     * running daemonized, but it prevents daemons from occupying whatever
-     * working directory they happened to be started from. */
-    if ( daemonize )
-        chdir("/");
-
-    if ( pid_path != NULL ) {
-        if ( write_pid(pid_path) < 0 ) {
-            perror("Error writing pid file");
-            status = 1;
-            goto end_nulltty;
+    if ( daemonize ) {
+        startup_wd = malloc(PATH_MAX);
+        if ( ! startup_wd ) {
+            perror("Unable to save current working directory");
+            goto end;
+        }
+        if ( ! getcwd(startup_wd, PATH_MAX) ) {
+            perror("Unable to save current working directory");
+            goto end_malloc;
         }
     }
 
@@ -211,35 +205,54 @@ int main(int argc, char* argv[])
     if ( nulltty == NULL ) {
         perror("Error opening requested PTYs");
         status = 1;
-        goto end;
+        goto end_malloc;
     }
 
-    if ( daemonize ) {
-        if ( daemon(0, 0) != 0 ) {
-            perror("Error daemonizing");
-            status = 1;
-            goto end_nulltty;
-        }
+    /* We don't chdir here so that we can write the pid file using a
+     * relative path, after daemonization. */
+    if ( daemonize && daemon(1, 0) != 0 ) {
+        perror("Error daemonizing");
+        status = 1;
+        goto end_nulltty;
+    }
+    if ( pid_path != NULL && write_pid(pid_path) < 0 ) {
+        perror("Error writing pid file");
+        status = 1;
+        goto end_nulltty;
+    }
+    if ( daemonize && chdir("/") < 0 ) {
+        perror("Unable to change working directory");
+        goto end_pid;
     }
 
-    if ( signum != -1 ) {
-        if ( kill(getppid(), signum) < 0 ) {
-            perror("Unable to signal parent");
-            status = 1;
-            goto end_pid;
-        }
+    if ( signum != -1 && kill(getppid(), signum) < 0 ) {
+        perror("Unable to signal parent");
+        status = 1;
+        goto end_pid;
     }
 
     if ( nulltty_relay(nulltty, &exit_flag) < 0 ) {
         perror("Relaying failed");
         status = 2;
-        goto end_nulltty;
+        goto end_pid;
     }
 
  end_pid:
+    if ( daemonize && pid_path[0] != '/' && chdir(startup_wd) < 0 ) {
+        perror("Unable to restore working directory for pid file cleanup");
+        status = 3;
+    }
     unlink(pid_path);
  end_nulltty:
+    if ( daemonize && ( link_a[0] != '/' || link_b[0] != '/' )
+         && chdir(startup_wd) < 0 ) {
+        perror("Unable to restore working directory for symlink cleanup");
+        status = 3;
+    }
     nulltty_close(nulltty);
+ end_malloc:
+    if ( daemonize )
+        free(startup_wd);
  end:
     return status;
 }
