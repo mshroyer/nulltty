@@ -93,9 +93,7 @@ static int sig_num(const char *sig_name)
     int result = -1;
     char *endptr = name;
 
-    if ( strlcpy(name, sig_name, SIG_NAME_MAX) < 0 )
-        return -1;
-
+    strlcpy(name, sig_name, SIG_NAME_MAX);
     upcase(name, SIG_NAME_MAX);
 
     result = strtol(name, &endptr, 10);
