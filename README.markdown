@@ -25,11 +25,11 @@ Linux 3.2, FreeBSD 9.0, NetBSD 6, and Mac OS X 10.8.
 nulltty releases are distributed as source code tarballs.  Releases are
 found here, and are signed with my GPG key (fingerprint B02B6CBC):
 
-http://dl.paleogene.net/nulltty/
+http://dist.paleogene.net/nulltty/
 
 Development is hosted on GitHub:
 
-https://github.com/markshroyer/nulltty.git
+https://github.com/markshroyer/nulltty/
 
 End users should use the release tarballs rather than the git repository,
 which may not be fully tested and which requires Autotools preprocessing
