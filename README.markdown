@@ -22,8 +22,9 @@ Linux 3.2, FreeBSD 9.0, NetBSD 6, and Mac OS X 10.8.
 
 ## Obtaining nulltty ##
 
-nulltty releases are distributed as source code tarballs.  Releases are
-found here, and are signed with my GPG key (fingerprint B02B6CBC):
+nulltty releases are distributed as source tarballs.  Releases can be found
+at the following URL, and are signed with my GPG key (fingerprint
+B02B6CBC):
 
 http://dist.paleogene.net/nulltty/
 

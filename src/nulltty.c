@@ -16,7 +16,7 @@
 #define SIG_NAME_MAX 128
 
 static volatile sig_atomic_t exit_flag = 0;
-nulltty_t nulltty = NULL;
+static nulltty_t nulltty = NULL;
 
 static void sigterm_handler(int signum)
 {
