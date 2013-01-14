@@ -22,8 +22,8 @@ and
 , and then continuously relays data between the two until terminated with
 SIGTERM or SIGINT.
 
-If nulltty receives SIGINFO (on platforms which support it) or SIGUSR1, it
-will print current relayed byte totals to stderr.
+If nulltty receives SIGINFO (on platforms which implement it) or SIGUSR1,
+it will print current relayed byte totals to stderr.
 .Sh OPTIONS
 .Bl -tag -width indent
 .It Fl d

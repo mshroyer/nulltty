@@ -20,6 +20,22 @@ OpenBSD's pseudoterminal interface.  It has been tested on OpenBSD 5.2,
 Linux 3.2, FreeBSD 9.0, NetBSD 6, and Mac OS X 10.8.
 
 
+## Obtaining nulltty ##
+
+nulltty releases are distributed as source code tarballs.  Releases are
+found here, and are signed with my GPG key (fingerprint B02B6CBC):
+
+http://dl.paleogene.net/nulltty/
+
+Development is hosted on GitHub:
+
+https://github.com/markshroyer/nulltty.git
+
+End users should use the release tarballs rather than the git repository,
+which may not be fully tested and which requires Autotools preprocessing
+before it is ready to build.
+
+
 ## Installation ##
 
 This is a typical Autotools project, which can be built and installed in
