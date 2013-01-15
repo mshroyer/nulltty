@@ -8,7 +8,7 @@ AC_PREREQ([2.68])
 ### VERSION INFORMATION ###################################################
 
 # Package name and version number
-AC_INIT([nulltty], [0.0.1], [code@markshroyer.com])
+AC_INIT([nulltty], [1.0.0], [code@markshroyer.com])
 
 ###########################################################################
 
